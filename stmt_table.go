@@ -25,7 +25,7 @@ import (
 //	- SK: sort key, format name:type (type is one of String, Number, Binary)
 //	- rcu: an integer specifying DynamoDB's read capacity, default value is 1.
 //	- wcu: an integer specifying DynamoDB's write capacity, default value is 1.
-//	- If "IF NOT EXISTS" is specified, Exec will silently swallow the error "409 Conflict".
+//	- If "IF NOT EXISTS" is specified, Exec will silently swallow the error "ResourceInUseException".
 type StmtCreateTable struct {
 	*Stmt
 	tableName      string
@@ -147,6 +147,66 @@ func (r *ResultCreateTable) LastInsertId() (int64, error) {
 
 // RowsAffected implements driver.Result.RowsAffected.
 func (r *ResultCreateTable) RowsAffected() (int64, error) {
+	if r.Successful {
+		return 1, nil
+	}
+	return 0, nil
+}
+
+/*----------------------------------------------------------------------*/
+
+// StmtDropTable implements "DROP TABLE" operation.
+//
+// Syntax:
+//
+//	DROP TABLE [IF EXISTS] <table-name>
+//
+// If "IF EXISTS" is specified, Exec will silently swallow the error "ResourceNotFoundException".
+type StmtDropTable struct {
+	*Stmt
+	tableName string
+	ifExists  bool
+}
+
+func (s *StmtDropTable) validate() error {
+	if s.tableName == "" {
+		return errors.New("table name is missing")
+	}
+	return nil
+}
+
+// Query implements driver.Stmt.Query.
+// This function is not implemented, use Exec instead.
+func (s *StmtDropTable) Query(_ []driver.Value) (driver.Rows, error) {
+	return nil, errors.New("this operation is not supported, please use Exec")
+}
+
+// Exec implements driver.Stmt.Exec.
+func (s *StmtDropTable) Exec(_ []driver.Value) (driver.Result, error) {
+	input := &dynamodb.DeleteTableInput{
+		TableName: &s.tableName,
+	}
+	_, err := s.conn.client.DeleteTable(context.Background(), input)
+	result := &ResultDropTable{Successful: err == nil}
+	if s.ifExists && IsAwsError(err, "ResourceNotFoundException") {
+		err = nil
+	}
+	return result, err
+}
+
+// ResultDropTable captures the result from DROP TABLE operation.
+type ResultDropTable struct {
+	// Successful flags if the operation was successful or not.
+	Successful bool
+}
+
+// LastInsertId implements driver.Result.LastInsertId.
+func (r *ResultDropTable) LastInsertId() (int64, error) {
+	return 0, fmt.Errorf("this operation is not supported.")
+}
+
+// RowsAffected implements driver.Result.RowsAffected.
+func (r *ResultDropTable) RowsAffected() (int64, error) {
 	if r.Successful {
 		return 1, nil
 	}

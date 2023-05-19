@@ -47,9 +47,10 @@ func main() {
 
 - Tables:
   - `CREATE TABLE`
+  - `DROP TABLE`
   - `LIST TABLES`
 
-**CREATE TABLE**
+### CREATE TABLE
 
 Syntax:
 ```sql
@@ -86,7 +87,37 @@ Example:
 CREATE TABLE demo WITH PK=id:string WITH rcu=3 WITH wcu=5
 ```
 
-**LIST TABLES**
+### DROP TABLE
+
+Syntax:
+```sql
+DROP TABLE [IF EXIST] <table-name>
+```
+
+Alias: `DELETE TABLE`
+
+Example:
+```go
+result, err := db.Exec(`DROP TABLE...`)
+if err == nil {
+    numAffectedRow, err := result.RowsAffected()
+    ...
+}
+```
+
+Description: delete an existing DynamoDB table specified by `table-name`.
+
+- If the statement is executed successfully, `RowsAffected()` returns `1, nil`.
+- If the specified table does not exist:
+  - If `IF EXISTS` is supplied: `RowsAffected()` returns `0, nil`
+  - If `IF EXISTS` is _not_ supplied: `RowsAffected()` returns `_, error`
+
+Example:
+```sql
+DROP TABLE IF EXISTS demo
+```
+
+### LIST TABLES
 
 Syntax:
 ```sql

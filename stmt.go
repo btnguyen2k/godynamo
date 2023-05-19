@@ -10,11 +10,13 @@ import (
 const (
 	field       = `([\w\-]+)`
 	ifNotExists = `(\s+IF\s+NOT\s+EXISTS)?`
+	ifExists    = `(\s+IF\s+EXISTS)?`
 	with        = `(\s+WITH\s+` + field + `\s*=\s*([\w/\.;:'"-]+)((\s*,\s*|\s+)WITH\s+` + field + `\s*=\s*([\w/\.;:'"-]+))*)?`
 )
 
 var (
 	reCreateTable = regexp.MustCompile(`(?im)^CREATE\s+TABLE` + ifNotExists + `\s+` + field + with + `$`)
+	reDropTable   = regexp.MustCompile(`(?im)^(DROP|DELETE)\s+TABLE` + ifExists + `\s+` + field + `$`)
 	reListTables  = regexp.MustCompile(`(?im)^LIST\s+TABLES?$`)
 )
 
@@ -24,12 +26,21 @@ func parseQuery(c *Conn, query string) (driver.Stmt, error) {
 		groups := re.FindAllStringSubmatch(query, -1)
 		stmt := &StmtCreateTable{
 			Stmt:        &Stmt{query: query, conn: c, numInput: 0},
-			ifNotExists: strings.TrimSpace(groups[0][1]) != "",
-			tableName:   strings.TrimSpace(groups[0][2]),
+			ifNotExists: strings.TrimSpace(groups[0][2]) != "",
+			tableName:   strings.TrimSpace(groups[0][3]),
 			withOptsStr: " " + strings.TrimSpace(groups[0][3]),
 		}
 		if err := stmt.parse(); err != nil {
 			return nil, err
+		}
+		return stmt, stmt.validate()
+	}
+	if re := reDropTable; re.MatchString(query) {
+		groups := re.FindAllStringSubmatch(query, -1)
+		stmt := &StmtDropTable{
+			Stmt:      &Stmt{query: query, conn: c, numInput: 0},
+			tableName: strings.TrimSpace(groups[0][3]),
+			ifExists:  strings.TrimSpace(groups[0][2]) != "",
 		}
 		return stmt, stmt.validate()
 	}
@@ -52,19 +63,6 @@ func parseQuery(c *Conn, query string) (driver.Stmt, error) {
 	// 	}
 	// 	if err := stmt.parse(); err != nil {
 	// 		return nil, err
-	// 	}
-	// 	return stmt, stmt.validate()
-	// }
-	// if re := reDropColl; re.MatchString(query) {
-	// 	groups := re.FindAllStringSubmatch(query, -1)
-	// 	stmt := &StmtDropCollection{
-	// 		Stmt:     &Stmt{query: query, conn: c, numInput: 0},
-	// 		dbName:   strings.TrimSpace(groups[0][4]),
-	// 		collName: strings.TrimSpace(groups[0][5]),
-	// 		ifExists: strings.TrimSpace(groups[0][2]) != "",
-	// 	}
-	// 	if stmt.dbName == "" {
-	// 		stmt.dbName = defaultDb
 	// 	}
 	// 	return stmt, stmt.validate()
 	// }
