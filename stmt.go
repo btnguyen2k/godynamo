@@ -14,8 +14,8 @@ const (
 )
 
 var (
-	reCreateTable = regexp.MustCompile(`(?is)^CREATE\s+TABLE` + ifNotExists + `\s+` + field + with + `$`)
-	reListTables  = regexp.MustCompile(`(?is)^LIST\s+TABLES?$`)
+	reCreateTable = regexp.MustCompile(`(?im)^CREATE\s+TABLE` + ifNotExists + `\s+` + field + with + `$`)
+	reListTables  = regexp.MustCompile(`(?im)^LIST\s+TABLES?$`)
 )
 
 func parseQuery(c *Conn, query string) (driver.Stmt, error) {
@@ -146,7 +146,7 @@ type Stmt struct {
 	withOpts map[string]string
 }
 
-var reWithOpts = regexp.MustCompile(`(?i)^(\s*,\s*|\s*)WITH\s+` + field + `\s*=\s*([\w/\.;:'"-]+)`)
+var reWithOpts = regexp.MustCompile(`(?im)^(\s*,\s*|\s*)WITH\s+` + field + `\s*=\s*([\w/\.;:'"-]+)`)
 
 // parseWithOpts parses "WITH..." clause and store result in withOpts map.
 // This function returns no error. Sub-implementations may override this behavior.

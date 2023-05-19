@@ -123,7 +123,7 @@ func (s *StmtCreateTable) Exec(_ []driver.Value) (driver.Result, error) {
 		KeySchema:            keySchema,
 		ProvisionedThroughput: &types.ProvisionedThroughput{
 			ReadCapacityUnits:  &s.rcu,
-			WriteCapacityUnits: &s.rcu,
+			WriteCapacityUnits: &s.wcu,
 		},
 	}
 	_, err := s.conn.client.CreateTable(context.Background(), input)

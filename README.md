@@ -8,3 +8,97 @@
 
 Go driver for [AWS DynamoDB](https://aws.amazon.com/dynamodb/) which can be used with the standard [database/sql](https://golang.org/pkg/database/sql/) package.
 
+## Usage
+
+```go
+import (
+	"database/sql"
+	_ "github.com/btnguyen2k/gocosmos"
+)
+
+func main() {
+    driver := "godynamo"
+	dsn := "Region=<aws-region>;AkId=<access-key-id>;SecretKey=<secret-key>"
+	db, err := sql.Open(driver, dsn)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
+    // db instance is ready to use
+    dbrows, err := db.Query(`LIST TABLES`)
+    if err != nil {
+        panic(err)
+    }
+	for dbRows.Next() {
+		var val interface{}
+		err := dbRows.Scan(&val)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(val)
+	}
+}
+```
+
+## Data Source Name (DSN) format for AWS Dynamo DB
+
+## Supported statements:
+
+- Tables:
+  - `CREATE TABLE`
+  - `LIST TABLES`
+
+**CREATE TABLE**
+
+Syntax:
+```sql
+CREATE TABLE [IF NOT EXIST] <table-name>
+WITH PK=<partition-key-name>:<data-type>
+[, WITH SK=<sort-key-name>:<data-type>]
+[, WITH wcu=<number>]
+[, WITH rcu=<number>]
+```
+
+Example:
+```go
+result, err := db.Exec(`CREATE TABLE...`)
+if err == nil {
+    numAffectedRow, err := result.RowsAffected()
+    ...
+}
+```
+
+Description: create a DynamoDB table specified by `table-name`.
+
+- If the statement is executed successfully, `RowsAffected()` returns `1, nil`.
+- If the specified table already existed:
+  - If `IF NOT EXISTS` is supplied: `RowsAffected()` returns `0, nil`
+  - If `IF NOT EXISTS` is _not_ supplied: `RowsAffected()` returns `_, error`
+- `RCU`: read capacity unit. If not specified or equal to 0, default value of 1 will be used.
+- `WCU`: write capacity unit. If not specified or equal to 0, default value of 1 will be used.
+- `PK`: partition key, mandatory.
+- `SK`: sort key, optional.
+- `data-type`: must be one of `BINARY`, `NUMBER` or `STRING`
+
+Example:
+```sql
+CREATE TABLE demo WITH PK=id:string WITH rcu=3 WITH wcu=5
+```
+
+**LIST TABLES**
+
+Syntax:
+```sql
+LIST TABLES
+```
+
+Example:
+```go
+result, err := db.Query(`LIST TABLES`)
+if err == nil {
+    ...
+}
+```
+
+Description: return list of all DynamoDB tables.
