@@ -43,6 +43,8 @@ func main() {
 
 ## Data Source Name (DSN) format for AWS Dynamo DB
 
+// TODO
+
 ## Supported statements:
 
 - Tables:
@@ -89,6 +91,8 @@ Description: create a DynamoDB table specified by `table-name`.
   - `projectionAttrs=attr1,attr2,...`: specified attributes from the original table are included in projection (`ProjectionType=INCLUDE`).
   - _projectionAttrs is not specified_: only key attributes are included in projection (`ProjectionType=KEYS_ONLY`).
 - `data-type`: must be one of `BINARY`, `NUMBER` or `STRING`.
+- Note: if `RCU` and `WRU` are both `0` or not specified, table will be created with `PAY_PER_REQUEST` billing mode; otherwise table will be creatd with `PROVISIONED` mode.
+- Note: there must be _at least one space_ before the `WITH` keyword.
 
 Example:
 ```sql

@@ -24,14 +24,14 @@ type lsiDef struct {
 //
 // Syntax:
 //
-//	CREATE TABLE [IF NOT EXISTS] <table-name>
-//	<WITH PK=pk-attr-name:data-type>
-//	[, WITH SK=sk-attr-name:data-type]
-//	[, WITH RCU=rcu][, WITH WCU=wcu]
-//	[, WITH LSI=index-name1:attr-name1:data-type]
-//	[, WITH LSI=index-name2:attr-name2:data-type:*]
-//	[, WITH LSI=index-name2:attr-name2:data-type:nonKeyAttr1,nonKeyAttr2,nonKeyAttr3,...]
-//	[, WITH LSI...]
+//		CREATE TABLE [IF NOT EXISTS] <table-name>
+//		<WITH PK=pk-attr-name:data-type>
+//		[, WITH SK=sk-attr-name:data-type]
+//		[, WITH RCU=rcu][, WITH WCU=wcu]
+//		[, WITH LSI=index-name1:attr-name1:data-type]
+//		[, WITH LSI=index-name2:attr-name2:data-type:*]
+//		[, WITH LSI=index-name2:attr-name2:data-type:nonKeyAttr1,nonKeyAttr2,nonKeyAttr3,...]
+//		[, WITH LSI...]
 //
 //	- PK: partition key, format name:type (type is one of String, Number, Binary).
 //	- SK: sort key, format name:type (type is one of String, Number, Binary).
@@ -40,9 +40,10 @@ type lsiDef struct {
 //		- projectionAttrs=*: all attributes from the original table are included in projection (ProjectionType=ALL).
 //		- projectionAttrs=attr1,attr2,...: specified attributes from the original table are included in projection (ProjectionType=INCLUDE).
 //		- projectionAttrs is not specified: only key attributes are included in projection (ProjectionType=KEYS_ONLY).
-//	- rcu: an integer specifying DynamoDB's read capacity, default value is 1.
-//	- wcu: an integer specifying DynamoDB's write capacity, default value is 1.
+//	- RCU: an integer specifying DynamoDB's read capacity.
+//	- WCU: an integer specifying DynamoDB's write capacity.
 //	- If "IF NOT EXISTS" is specified, Exec will silently swallow the error "ResourceInUseException".
+//	- Note: if RCU and WRU are both 0 or not specified, table will be created with PAY_PER_REQUEST billing mode; otherwise table will be creatd with PROVISIONED mode.
 //	- Note: there must be at least one space before the WITH keyword.
 type StmtCreateTable struct {
 	*Stmt
@@ -123,12 +124,6 @@ func (s *StmtCreateTable) parse() error {
 		}
 		s.wcu = wcu
 	}
-	if s.rcu < 1 {
-		s.rcu = 1
-	}
-	if s.wcu < 1 {
-		s.wcu = 1
-	}
 
 	return nil
 }
@@ -181,14 +176,18 @@ func (s *StmtCreateTable) Exec(_ []driver.Value) (driver.Result, error) {
 	}
 
 	input := &dynamodb.CreateTableInput{
-		TableName:            &s.tableName,
-		AttributeDefinitions: attrDefs,
-		KeySchema:            keySchema,
-		ProvisionedThroughput: &types.ProvisionedThroughput{
+		TableName:             &s.tableName,
+		AttributeDefinitions:  attrDefs,
+		KeySchema:             keySchema,
+		LocalSecondaryIndexes: lsi,
+	}
+	if s.rcu == 0 && s.wcu == 0 {
+		input.BillingMode = types.BillingModePayPerRequest
+	} else {
+		input.ProvisionedThroughput = &types.ProvisionedThroughput{
 			ReadCapacityUnits:  &s.rcu,
 			WriteCapacityUnits: &s.wcu,
-		},
-		LocalSecondaryIndexes: lsi,
+		}
 	}
 	_, err := s.conn.client.CreateTable(context.Background(), input)
 	result := &ResultCreateTable{Successful: err == nil}
