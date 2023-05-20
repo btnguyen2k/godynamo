@@ -11,7 +11,7 @@ const (
 	field       = `([\w\-]+)`
 	ifNotExists = `(\s+IF\s+NOT\s+EXISTS)?`
 	ifExists    = `(\s+IF\s+EXISTS)?`
-	with        = `(\s+WITH\s+` + field + `\s*=\s*([\w/\.;:'"-]+)((\s*,\s*|\s+)WITH\s+` + field + `\s*=\s*([\w/\.;:'"-]+))*)?`
+	with        = `(\s+WITH\s+` + field + `\s*=\s*([\w/\.\*,;:'"-]+)((\s+|\s*,\s+|\s+,\s*)WITH\s+` + field + `\s*=\s*([\w/\.\*,;:'"-]+))*)?`
 )
 
 var (
@@ -26,8 +26,8 @@ func parseQuery(c *Conn, query string) (driver.Stmt, error) {
 		groups := re.FindAllStringSubmatch(query, -1)
 		stmt := &StmtCreateTable{
 			Stmt:        &Stmt{query: query, conn: c, numInput: 0},
-			ifNotExists: strings.TrimSpace(groups[0][2]) != "",
-			tableName:   strings.TrimSpace(groups[0][3]),
+			ifNotExists: strings.TrimSpace(groups[0][1]) != "",
+			tableName:   strings.TrimSpace(groups[0][2]),
 			withOptsStr: " " + strings.TrimSpace(groups[0][3]),
 		}
 		if err := stmt.parse(); err != nil {
@@ -136,26 +136,33 @@ func parseQuery(c *Conn, query string) (driver.Stmt, error) {
 	return nil, fmt.Errorf("invalid query: %s", query)
 }
 
+type OptStrings []string
+
+func (s OptStrings) FirstString() string {
+	return s[0]
+}
+
 // Stmt is AWS DynamoDB prepared statement handler.
 type Stmt struct {
 	query    string // the SQL query
 	conn     *Conn  // the connection that this prepared statement is bound to
 	numInput int    // number of placeholder parameters
-	withOpts map[string]string
+	withOpts map[string]OptStrings
 }
 
-var reWithOpts = regexp.MustCompile(`(?im)^(\s*,\s*|\s*)WITH\s+` + field + `\s*=\s*([\w/\.;:'"-]+)`)
+var reWithOpts = regexp.MustCompile(`(?im)^(\s+|\s*,\s+|\s+,\s*)WITH\s+` + field + `\s*=\s*([\w/\.\*,;:'"-]+)`)
 
 // parseWithOpts parses "WITH..." clause and store result in withOpts map.
 // This function returns no error. Sub-implementations may override this behavior.
 func (s *Stmt) parseWithOpts(withOptsStr string) error {
-	s.withOpts = make(map[string]string)
+	s.withOpts = make(map[string]OptStrings)
 	for {
 		matches := reWithOpts.FindStringSubmatch(withOptsStr)
 		if matches == nil {
 			break
 		}
-		s.withOpts[strings.TrimSpace(strings.ToUpper(matches[2]))] = strings.TrimSpace(matches[3])
+		k := strings.TrimSpace(strings.ToUpper(matches[2]))
+		s.withOpts[k] = append(s.withOpts[k], strings.TrimSuffix(strings.TrimSpace(matches[3]), ","))
 		withOptsStr = withOptsStr[len(matches[0]):]
 	}
 	return nil

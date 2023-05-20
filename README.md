@@ -59,6 +59,10 @@ WITH PK=<partition-key-name>:<data-type>
 [, WITH SK=<sort-key-name>:<data-type>]
 [, WITH wcu=<number>]
 [, WITH rcu=<number>]
+[, WITH LSI=index-name1:attr-name1:data-type]
+[, WITH LSI=index-name2:attr-name2:data-type:*]
+[, WITH LSI=index-name2:attr-name2:data-type:nonKeyAttr1,nonKeyAttr2,nonKeyAttr3,...]
+[, WITH LSI...]
 ```
 
 Example:
@@ -74,13 +78,17 @@ Description: create a DynamoDB table specified by `table-name`.
 
 - If the statement is executed successfully, `RowsAffected()` returns `1, nil`.
 - If the specified table already existed:
-  - If `IF NOT EXISTS` is supplied: `RowsAffected()` returns `0, nil`
-  - If `IF NOT EXISTS` is _not_ supplied: `RowsAffected()` returns `_, error`
+  - If `IF NOT EXISTS` is supplied: `RowsAffected()` returns `0, nil`.
+  - If `IF NOT EXISTS` is _not_ supplied: `RowsAffected()` returns `_, error`.
 - `RCU`: read capacity unit. If not specified or equal to 0, default value of 1 will be used.
 - `WCU`: write capacity unit. If not specified or equal to 0, default value of 1 will be used.
 - `PK`: partition key, mandatory.
 - `SK`: sort key, optional.
-- `data-type`: must be one of `BINARY`, `NUMBER` or `STRING`
+- `LSI`: local secondary index, format `index-name:attr-name:data-type[:projectionAttrs]`
+  - `projectionAttrs=*`: all attributes from the original table are included in projection (`ProjectionType=ALL`).
+  - `projectionAttrs=attr1,attr2,...`: specified attributes from the original table are included in projection (`ProjectionType=INCLUDE`).
+  - _projectionAttrs is not specified_: only key attributes are included in projection (`ProjectionType=KEYS_ONLY`).
+- `data-type`: must be one of `BINARY`, `NUMBER` or `STRING`.
 
 Example:
 ```sql

@@ -15,17 +15,35 @@ import (
 
 /*----------------------------------------------------------------------*/
 
+type lsiDef struct {
+	indexName, fieldName, fieldType string
+	projectedFields                 string
+}
+
 // StmtCreateTable implements "CREATE TABLE" operation.
 //
 // Syntax:
 //
-//	CREATE TABLE [IF NOT EXISTS] <table-name> <WITH PK=pk-name:pk-type>[, WITH SK=sk-name:sk-type][, WITH RCU=rcu][, WITH WCU=wcu]
+//	CREATE TABLE [IF NOT EXISTS] <table-name>
+//	<WITH PK=pk-attr-name:data-type>
+//	[, WITH SK=sk-attr-name:data-type]
+//	[, WITH RCU=rcu][, WITH WCU=wcu]
+//	[, WITH LSI=index-name1:attr-name1:data-type]
+//	[, WITH LSI=index-name2:attr-name2:data-type:*]
+//	[, WITH LSI=index-name2:attr-name2:data-type:nonKeyAttr1,nonKeyAttr2,nonKeyAttr3,...]
+//	[, WITH LSI...]
 //
-//	- PK: partition key, format name:type (type is one of String, Number, Binary)
-//	- SK: sort key, format name:type (type is one of String, Number, Binary)
+//	- PK: partition key, format name:type (type is one of String, Number, Binary).
+//	- SK: sort key, format name:type (type is one of String, Number, Binary).
+//	- LSI: local secondary index, format index-name:attr-name:type[:projectionAttrs], where:
+//		- type is one of String, Number, Binary.
+//		- projectionAttrs=*: all attributes from the original table are included in projection (ProjectionType=ALL).
+//		- projectionAttrs=attr1,attr2,...: specified attributes from the original table are included in projection (ProjectionType=INCLUDE).
+//		- projectionAttrs is not specified: only key attributes are included in projection (ProjectionType=KEYS_ONLY).
 //	- rcu: an integer specifying DynamoDB's read capacity, default value is 1.
 //	- wcu: an integer specifying DynamoDB's write capacity, default value is 1.
 //	- If "IF NOT EXISTS" is specified, Exec will silently swallow the error "ResourceInUseException".
+//	- Note: there must be at least one space before the WITH keyword.
 type StmtCreateTable struct {
 	*Stmt
 	tableName      string
@@ -33,6 +51,7 @@ type StmtCreateTable struct {
 	pkName, pkType string
 	skName, skType string
 	rcu, wcu       int64
+	lsi            []lsiDef
 	withOptsStr    string
 }
 
@@ -42,7 +61,7 @@ func (s *StmtCreateTable) parse() error {
 	}
 
 	// partition key
-	pkTokens := strings.SplitN(s.withOpts["PK"], ":", 2)
+	pkTokens := strings.SplitN(s.withOpts["PK"].FirstString(), ":", 2)
 	s.pkName = strings.TrimSpace(pkTokens[0])
 	if len(pkTokens) > 1 {
 		s.pkType = strings.TrimSpace(strings.ToUpper(pkTokens[1]))
@@ -55,7 +74,7 @@ func (s *StmtCreateTable) parse() error {
 	}
 
 	// sort key
-	skTokens := strings.SplitN(s.withOpts["SK"], ":", 2)
+	skTokens := strings.SplitN(s.withOpts["SK"].FirstString(), ":", 2)
 	s.skName = strings.TrimSpace(skTokens[0])
 	if len(skTokens) > 1 {
 		s.skType = strings.TrimSpace(strings.ToUpper(skTokens[1]))
@@ -64,9 +83,33 @@ func (s *StmtCreateTable) parse() error {
 		return fmt.Errorf("invalid type SortKey <%s>, accepts values are BINARY, NUMBER and STRING", s.skType)
 	}
 
+	// local secondary index
+	for _, lsiStr := range s.withOpts["LSI"] {
+		lsiTokens := strings.SplitN(lsiStr, ":", 4)
+		lsiDef := lsiDef{indexName: strings.TrimSpace(lsiTokens[0])}
+		if len(lsiTokens) > 1 {
+			lsiDef.fieldName = strings.TrimSpace(lsiTokens[1])
+		}
+		if len(lsiTokens) > 2 {
+			lsiDef.fieldType = strings.TrimSpace(strings.ToUpper(lsiTokens[2]))
+		}
+		if len(lsiTokens) > 3 {
+			lsiDef.projectedFields = strings.TrimSpace(lsiTokens[3])
+		}
+		if lsiDef.indexName != "" {
+			if lsiDef.fieldName == "" {
+				return fmt.Errorf("invalid LSI definition <%s>: empty field name", lsiDef.indexName)
+			}
+			if _, ok := dataTypes[lsiDef.fieldType]; !ok {
+				return fmt.Errorf("invalid type <%s> of LSI <%s>, accepts values are BINARY, NUMBER and STRING", lsiDef.fieldType, lsiDef.indexName)
+			}
+		}
+		s.lsi = append(s.lsi, lsiDef)
+	}
+
 	// RCU
 	if _, ok := s.withOpts["RCU"]; ok {
-		rcu, err := strconv.ParseInt(s.withOpts["RCU"], 10, 64)
+		rcu, err := strconv.ParseInt(s.withOpts["RCU"].FirstString(), 10, 64)
 		if err != nil || rcu <= 0 {
 			return fmt.Errorf("invalid RCU value: %s", s.withOpts["RCU"])
 		}
@@ -74,7 +117,7 @@ func (s *StmtCreateTable) parse() error {
 	}
 	// WCU
 	if _, ok := s.withOpts["WCU"]; ok {
-		wcu, err := strconv.ParseInt(s.withOpts["WCU"], 10, 64)
+		wcu, err := strconv.ParseInt(s.withOpts["WCU"].FirstString(), 10, 64)
 		if err != nil || wcu <= 0 {
 			return fmt.Errorf("invalid WCU value: %s", s.withOpts["WCU"])
 		}
@@ -117,6 +160,26 @@ func (s *StmtCreateTable) Exec(_ []driver.Value) (driver.Result, error) {
 		keySchema = append(keySchema, types.KeySchemaElement{AttributeName: &s.skName, KeyType: keyTypes["RANGE"]})
 	}
 
+	lsi := make([]types.LocalSecondaryIndex, len(s.lsi))
+	for i := range s.lsi {
+		attrDefs = append(attrDefs, types.AttributeDefinition{AttributeName: &s.lsi[i].fieldName, AttributeType: dataTypes[s.lsi[i].fieldType]})
+		lsi[i] = types.LocalSecondaryIndex{
+			IndexName: &s.lsi[i].indexName,
+			KeySchema: []types.KeySchemaElement{
+				{AttributeName: &s.pkName, KeyType: keyTypes["HASH"]},
+				{AttributeName: &s.lsi[i].fieldName, KeyType: keyTypes["RANGE"]},
+			},
+			Projection: &types.Projection{ProjectionType: types.ProjectionTypeKeysOnly},
+		}
+		if s.lsi[i].projectedFields == "*" {
+			lsi[i].Projection.ProjectionType = types.ProjectionTypeAll
+		} else if s.lsi[i].projectedFields != "" {
+			lsi[i].Projection.ProjectionType = types.ProjectionTypeInclude
+			nonKeyAttrs := strings.Split(s.lsi[i].projectedFields, ",")
+			lsi[i].Projection.NonKeyAttributes = nonKeyAttrs
+		}
+	}
+
 	input := &dynamodb.CreateTableInput{
 		TableName:            &s.tableName,
 		AttributeDefinitions: attrDefs,
@@ -125,6 +188,7 @@ func (s *StmtCreateTable) Exec(_ []driver.Value) (driver.Result, error) {
 			ReadCapacityUnits:  &s.rcu,
 			WriteCapacityUnits: &s.wcu,
 		},
+		LocalSecondaryIndexes: lsi,
 	}
 	_, err := s.conn.client.CreateTable(context.Background(), input)
 	result := &ResultCreateTable{Successful: err == nil}
