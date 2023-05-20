@@ -16,8 +16,9 @@ const (
 
 var (
 	reCreateTable = regexp.MustCompile(`(?im)^CREATE\s+TABLE` + ifNotExists + `\s+` + field + with + `$`)
-	reDropTable   = regexp.MustCompile(`(?im)^(DROP|DELETE)\s+TABLE` + ifExists + `\s+` + field + `$`)
 	reListTables  = regexp.MustCompile(`(?im)^LIST\s+TABLES?$`)
+	reAlterTable  = regexp.MustCompile(`(?im)^ALTER\s+TABLE\s+` + field + with + `$`)
+	reDropTable   = regexp.MustCompile(`(?im)^(DROP|DELETE)\s+TABLE` + ifExists + `\s+` + field + `$`)
 )
 
 func parseQuery(c *Conn, query string) (driver.Stmt, error) {
@@ -35,6 +36,24 @@ func parseQuery(c *Conn, query string) (driver.Stmt, error) {
 		}
 		return stmt, stmt.validate()
 	}
+	if re := reListTables; re.MatchString(query) {
+		stmt := &StmtListTables{
+			Stmt: &Stmt{query: query, conn: c, numInput: 0},
+		}
+		return stmt, stmt.validate()
+	}
+	if re := reAlterTable; re.MatchString(query) {
+		groups := re.FindAllStringSubmatch(query, -1)
+		stmt := &StmtAlterTable{
+			Stmt:        &Stmt{query: query, conn: c, numInput: 0},
+			tableName:   strings.TrimSpace(groups[0][1]),
+			withOptsStr: " " + strings.TrimSpace(groups[0][2]),
+		}
+		if err := stmt.parse(); err != nil {
+			return nil, err
+		}
+		return stmt, stmt.validate()
+	}
 	if re := reDropTable; re.MatchString(query) {
 		groups := re.FindAllStringSubmatch(query, -1)
 		stmt := &StmtDropTable{
@@ -44,28 +63,6 @@ func parseQuery(c *Conn, query string) (driver.Stmt, error) {
 		}
 		return stmt, stmt.validate()
 	}
-	if re := reListTables; re.MatchString(query) {
-		stmt := &StmtListTables{
-			Stmt: &Stmt{query: query, conn: c, numInput: 0},
-		}
-		return stmt, stmt.validate()
-	}
-	// if re := reAlterColl; re.MatchString(query) {
-	// 	groups := re.FindAllStringSubmatch(query, -1)
-	// 	stmt := &StmtAlterCollection{
-	// 		Stmt:        &Stmt{query: query, conn: c, numInput: 0},
-	// 		dbName:      strings.TrimSpace(groups[0][3]),
-	// 		collName:    strings.TrimSpace(groups[0][4]),
-	// 		withOptsStr: strings.TrimSpace(groups[0][5]),
-	// 	}
-	// 	if stmt.dbName == "" {
-	// 		stmt.dbName = defaultDb
-	// 	}
-	// 	if err := stmt.parse(); err != nil {
-	// 		return nil, err
-	// 	}
-	// 	return stmt, stmt.validate()
-	// }
 
 	// if re := reInsert; re.MatchString(query) {
 	// 	groups := re.FindAllStringSubmatch(query, -1)
@@ -139,7 +136,10 @@ func parseQuery(c *Conn, query string) (driver.Stmt, error) {
 type OptStrings []string
 
 func (s OptStrings) FirstString() string {
-	return s[0]
+	if len(s) > 0 {
+		return s[0]
+	}
+	return ""
 }
 
 // Stmt is AWS DynamoDB prepared statement handler.

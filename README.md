@@ -49,8 +49,9 @@ func main() {
 
 - Tables:
   - `CREATE TABLE`
-  - `DROP TABLE`
   - `LIST TABLES`
+  - `ALTER TABLE`
+  - `DROP TABLE`
 
 ### CREATE TABLE
 
@@ -58,13 +59,13 @@ Syntax:
 ```sql
 CREATE TABLE [IF NOT EXIST] <table-name>
 WITH PK=<partition-key-name>:<data-type>
-[, WITH SK=<sort-key-name>:<data-type>]
-[, WITH wcu=<number>]
-[, WITH rcu=<number>]
-[, WITH LSI=index-name1:attr-name1:data-type]
-[, WITH LSI=index-name2:attr-name2:data-type:*]
-[, WITH LSI=index-name2:attr-name2:data-type:nonKeyAttr1,nonKeyAttr2,nonKeyAttr3,...]
-[, WITH LSI...]
+[[,] WITH SK=<sort-key-name>:<data-type>]
+[[,] WITH wcu=<number>]
+[[,] WITH rcu=<number>]
+[[,] WITH LSI=index-name1:attr-name1:data-type]
+[[,] WITH LSI=index-name2:attr-name2:data-type:*]
+[[,] WITH LSI=index-name2:attr-name2:data-type:nonKeyAttr1,nonKeyAttr2,nonKeyAttr3,...]
+[[,] WITH LSI...]
 ```
 
 Example:
@@ -82,8 +83,8 @@ Description: create a DynamoDB table specified by `table-name`.
 - If the specified table already existed:
   - If `IF NOT EXISTS` is supplied: `RowsAffected()` returns `0, nil`.
   - If `IF NOT EXISTS` is _not_ supplied: `RowsAffected()` returns `_, error`.
-- `RCU`: read capacity unit. If not specified or equal to 0, default value of 1 will be used.
-- `WCU`: write capacity unit. If not specified or equal to 0, default value of 1 will be used.
+- `RCU`: read capacity unit.
+- `WCU`: write capacity unit.
 - `PK`: partition key, mandatory.
 - `SK`: sort key, optional.
 - `LSI`: local secondary index, format `index-name:attr-name:data-type[:projectionAttrs]`
@@ -91,6 +92,52 @@ Description: create a DynamoDB table specified by `table-name`.
   - `projectionAttrs=attr1,attr2,...`: specified attributes from the original table are included in projection (`ProjectionType=INCLUDE`).
   - _projectionAttrs is not specified_: only key attributes are included in projection (`ProjectionType=KEYS_ONLY`).
 - `data-type`: must be one of `BINARY`, `NUMBER` or `STRING`.
+- Note: if `RCU` and `WRU` are both `0` or not specified, table will be created with `PAY_PER_REQUEST` billing mode; otherwise table will be creatd with `PROVISIONED` mode.
+- Note: there must be _at least one space_ before the `WITH` keyword.
+
+Example:
+```sql
+CREATE TABLE demo WITH PK=id:string WITH rcu=3 WITH wcu=5
+```
+
+### LIST TABLES
+
+Syntax:
+```sql
+LIST TABLES
+```
+
+Example:
+```go
+result, err := db.Query(`LIST TABLES`)
+if err == nil {
+    ...
+}
+```
+
+Description: return list of all DynamoDB tables.
+
+### ALTER TABLE
+
+Syntax:
+```sql
+ALTER TABLE <table-name> WITH wcu=<number> WITH rcu=<number>
+```
+
+Example:
+```go
+result, err := db.Exec(`ALTER TABLE...`)
+if err == nil {
+    numAffectedRow, err := result.RowsAffected()
+    ...
+}
+```
+
+Description: update WCU and RCU of an existing DynamoDB table specified by `table-name`.
+
+- If the statement is executed successfully, `RowsAffected()` returns `1, nil`.
+- `RCU`: read capacity unit.
+- `WCU`: write capacity unit.
 - Note: if `RCU` and `WRU` are both `0` or not specified, table will be created with `PAY_PER_REQUEST` billing mode; otherwise table will be creatd with `PROVISIONED` mode.
 - Note: there must be _at least one space_ before the `WITH` keyword.
 
@@ -128,20 +175,3 @@ Example:
 ```sql
 DROP TABLE IF EXISTS demo
 ```
-
-### LIST TABLES
-
-Syntax:
-```sql
-LIST TABLES
-```
-
-Example:
-```go
-result, err := db.Query(`LIST TABLES`)
-if err == nil {
-    ...
-}
-```
-
-Description: return list of all DynamoDB tables.

@@ -13,12 +13,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
-/*----------------------------------------------------------------------*/
-
 type lsiDef struct {
 	indexName, fieldName, fieldType string
 	projectedFields                 string
 }
+
+/*----------------------------------------------------------------------*/
 
 // StmtCreateTable implements "CREATE TABLE" operation.
 //
@@ -26,12 +26,12 @@ type lsiDef struct {
 //
 //		CREATE TABLE [IF NOT EXISTS] <table-name>
 //		<WITH PK=pk-attr-name:data-type>
-//		[, WITH SK=sk-attr-name:data-type]
-//		[, WITH RCU=rcu][, WITH WCU=wcu]
-//		[, WITH LSI=index-name1:attr-name1:data-type]
-//		[, WITH LSI=index-name2:attr-name2:data-type:*]
-//		[, WITH LSI=index-name2:attr-name2:data-type:nonKeyAttr1,nonKeyAttr2,nonKeyAttr3,...]
-//		[, WITH LSI...]
+//		[[,] WITH SK=sk-attr-name:data-type]
+//		[[,] WITH RCU=rcu][, WITH WCU=wcu]
+//		[[,] WITH LSI=index-name1:attr-name1:data-type]
+//		[[,] WITH LSI=index-name2:attr-name2:data-type:*]
+//		[[,] WITH LSI=index-name2:attr-name2:data-type:nonKeyAttr1,nonKeyAttr2,nonKeyAttr3,...]
+//		[[,] WITH LSI...]
 //
 //	- PK: partition key, format name:type (type is one of String, Number, Binary).
 //	- SK: sort key, format name:type (type is one of String, Number, Binary).
@@ -111,7 +111,7 @@ func (s *StmtCreateTable) parse() error {
 	// RCU
 	if _, ok := s.withOpts["RCU"]; ok {
 		rcu, err := strconv.ParseInt(s.withOpts["RCU"].FirstString(), 10, 64)
-		if err != nil || rcu <= 0 {
+		if err != nil || rcu < 0 {
 			return fmt.Errorf("invalid RCU value: %s", s.withOpts["RCU"])
 		}
 		s.rcu = rcu
@@ -119,7 +119,7 @@ func (s *StmtCreateTable) parse() error {
 	// WCU
 	if _, ok := s.withOpts["WCU"]; ok {
 		wcu, err := strconv.ParseInt(s.withOpts["WCU"].FirstString(), 10, 64)
-		if err != nil || wcu <= 0 {
+		if err != nil || wcu < 0 {
 			return fmt.Errorf("invalid WCU value: %s", s.withOpts["WCU"])
 		}
 		s.wcu = wcu
@@ -218,66 +218,6 @@ func (r *ResultCreateTable) RowsAffected() (int64, error) {
 
 /*----------------------------------------------------------------------*/
 
-// StmtDropTable implements "DROP TABLE" operation.
-//
-// Syntax:
-//
-//	DROP TABLE [IF EXISTS] <table-name>
-//
-// If "IF EXISTS" is specified, Exec will silently swallow the error "ResourceNotFoundException".
-type StmtDropTable struct {
-	*Stmt
-	tableName string
-	ifExists  bool
-}
-
-func (s *StmtDropTable) validate() error {
-	if s.tableName == "" {
-		return errors.New("table name is missing")
-	}
-	return nil
-}
-
-// Query implements driver.Stmt.Query.
-// This function is not implemented, use Exec instead.
-func (s *StmtDropTable) Query(_ []driver.Value) (driver.Rows, error) {
-	return nil, errors.New("this operation is not supported, please use Exec")
-}
-
-// Exec implements driver.Stmt.Exec.
-func (s *StmtDropTable) Exec(_ []driver.Value) (driver.Result, error) {
-	input := &dynamodb.DeleteTableInput{
-		TableName: &s.tableName,
-	}
-	_, err := s.conn.client.DeleteTable(context.Background(), input)
-	result := &ResultDropTable{Successful: err == nil}
-	if s.ifExists && IsAwsError(err, "ResourceNotFoundException") {
-		err = nil
-	}
-	return result, err
-}
-
-// ResultDropTable captures the result from DROP TABLE operation.
-type ResultDropTable struct {
-	// Successful flags if the operation was successful or not.
-	Successful bool
-}
-
-// LastInsertId implements driver.Result.LastInsertId.
-func (r *ResultDropTable) LastInsertId() (int64, error) {
-	return 0, fmt.Errorf("this operation is not supported.")
-}
-
-// RowsAffected implements driver.Result.RowsAffected.
-func (r *ResultDropTable) RowsAffected() (int64, error) {
-	if r.Successful {
-		return 1, nil
-	}
-	return 0, nil
-}
-
-/*----------------------------------------------------------------------*/
-
 // StmtListTables implements "LIST TABLES" operation.
 //
 // Syntax:
@@ -337,4 +277,164 @@ func (r *RowsListTables) Next(dest []driver.Value) error {
 	r.cursorCount++
 	dest[0] = rowData
 	return nil
+}
+
+/*----------------------------------------------------------------------*/
+
+// StmtAlterTable implements "ALTER TABLE" operation.
+//
+// Syntax:
+//
+//		ALTER TABLE <table-name>
+//		WITH RCU=rcu[,] WITH WCU=wcu
+//
+//	- RCU: an integer specifying DynamoDB's read capacity.
+//	- WCU: an integer specifying DynamoDB's write capacity.
+//	- Note: if RCU and WRU are both 0 or not specified, table will be created with PAY_PER_REQUEST billing mode; otherwise table will be creatd with PROVISIONED mode.
+//	- Note: there must be at least one space before the WITH keyword.
+type StmtAlterTable struct {
+	*Stmt
+	tableName   string
+	rcu, wcu    int64
+	withOptsStr string
+}
+
+func (s *StmtAlterTable) parse() error {
+	if err := s.Stmt.parseWithOpts(s.withOptsStr); err != nil {
+		return err
+	}
+
+	// RCU
+	if _, ok := s.withOpts["RCU"]; ok {
+		rcu, err := strconv.ParseInt(s.withOpts["RCU"].FirstString(), 10, 64)
+		if err != nil || rcu < 0 {
+			return fmt.Errorf("invalid RCU value: %s", s.withOpts["RCU"])
+		}
+		s.rcu = rcu
+	} else {
+		return fmt.Errorf("RCU not specified")
+	}
+	// WCU
+	if _, ok := s.withOpts["WCU"]; ok {
+		wcu, err := strconv.ParseInt(s.withOpts["WCU"].FirstString(), 10, 64)
+		if err != nil || wcu < 0 {
+			return fmt.Errorf("invalid WCU value: %s", s.withOpts["WCU"])
+		}
+		s.wcu = wcu
+	} else {
+		return fmt.Errorf("WCU not specified")
+	}
+
+	return nil
+}
+
+func (s *StmtAlterTable) validate() error {
+	if s.tableName == "" {
+		return errors.New("table name is missing")
+	}
+	return nil
+}
+
+// Query implements driver.Stmt.Query.
+// This function is not implemented, use Exec instead.
+func (s *StmtAlterTable) Query(_ []driver.Value) (driver.Rows, error) {
+	return nil, errors.New("this operation is not supported, please use Exec")
+}
+
+// Exec implements driver.Stmt.Exec.
+func (s *StmtAlterTable) Exec(_ []driver.Value) (driver.Result, error) {
+	input := &dynamodb.UpdateTableInput{
+		TableName: &s.tableName,
+	}
+	if s.rcu == 0 && s.wcu == 0 {
+		input.BillingMode = types.BillingModePayPerRequest
+	} else {
+		input.BillingMode = types.BillingModeProvisioned
+		input.ProvisionedThroughput = &types.ProvisionedThroughput{
+			ReadCapacityUnits:  &s.rcu,
+			WriteCapacityUnits: &s.wcu,
+		}
+	}
+	_, err := s.conn.client.UpdateTable(context.Background(), input)
+	result := &ResultAlterTable{Successful: err == nil}
+	return result, err
+}
+
+// ResultAlterTable captures the result from CREATE TABLE operation.
+type ResultAlterTable struct {
+	// Successful flags if the operation was successful or not.
+	Successful bool
+}
+
+// LastInsertId implements driver.Result.LastInsertId.
+func (r *ResultAlterTable) LastInsertId() (int64, error) {
+	return 0, fmt.Errorf("this operation is not supported.")
+}
+
+// RowsAffected implements driver.Result.RowsAffected.
+func (r *ResultAlterTable) RowsAffected() (int64, error) {
+	if r.Successful {
+		return 1, nil
+	}
+	return 0, nil
+}
+
+/*----------------------------------------------------------------------*/
+
+// StmtDropTable implements "DROP TABLE" operation.
+//
+// Syntax:
+//
+//	DROP TABLE [IF EXISTS] <table-name>
+//
+// If "IF EXISTS" is specified, Exec will silently swallow the error "ResourceNotFoundException".
+type StmtDropTable struct {
+	*Stmt
+	tableName string
+	ifExists  bool
+}
+
+func (s *StmtDropTable) validate() error {
+	if s.tableName == "" {
+		return errors.New("table name is missing")
+	}
+	return nil
+}
+
+// Query implements driver.Stmt.Query.
+// This function is not implemented, use Exec instead.
+func (s *StmtDropTable) Query(_ []driver.Value) (driver.Rows, error) {
+	return nil, errors.New("this operation is not supported, please use Exec")
+}
+
+// Exec implements driver.Stmt.Exec.
+func (s *StmtDropTable) Exec(_ []driver.Value) (driver.Result, error) {
+	input := &dynamodb.DeleteTableInput{
+		TableName: &s.tableName,
+	}
+	_, err := s.conn.client.DeleteTable(context.Background(), input)
+	result := &ResultDropTable{Successful: err == nil}
+	if s.ifExists && IsAwsError(err, "ResourceNotFoundException") {
+		err = nil
+	}
+	return result, err
+}
+
+// ResultDropTable captures the result from DROP TABLE operation.
+type ResultDropTable struct {
+	// Successful flags if the operation was successful or not.
+	Successful bool
+}
+
+// LastInsertId implements driver.Result.LastInsertId.
+func (r *ResultDropTable) LastInsertId() (int64, error) {
+	return 0, fmt.Errorf("this operation is not supported.")
+}
+
+// RowsAffected implements driver.Result.RowsAffected.
+func (r *ResultDropTable) RowsAffected() (int64, error) {
+	if r.Successful {
+		return 1, nil
+	}
+	return 0, nil
 }
