@@ -70,7 +70,7 @@ WITH PK=<partition-key-name>:<data-type>
 
 Example:
 ```go
-result, err := db.Exec(`CREATE TABLE...`)
+result, err := db.Exec(`CREATE TABLE demo WITH PK=id:string WITH rcu=3 WITH wcu=5`)
 if err == nil {
     numAffectedRow, err := result.RowsAffected()
     ...
@@ -94,11 +94,6 @@ Description: create a DynamoDB table specified by `table-name`.
 - `data-type`: must be one of `BINARY`, `NUMBER` or `STRING`.
 - Note: if `RCU` and `WRU` are both `0` or not specified, table will be created with `PAY_PER_REQUEST` billing mode; otherwise table will be creatd with `PROVISIONED` mode.
 - Note: there must be _at least one space_ before the `WITH` keyword.
-
-Example:
-```sql
-CREATE TABLE demo WITH PK=id:string WITH rcu=3 WITH wcu=5
-```
 
 ### LIST TABLES
 
@@ -126,7 +121,7 @@ ALTER TABLE <table-name> WITH wcu=<number> WITH rcu=<number>
 
 Example:
 ```go
-result, err := db.Exec(`ALTER TABLE...`)
+result, err := db.Exec(`ALTER TABLE demo WITH rcu=0 WITH wcu=0`)
 if err == nil {
     numAffectedRow, err := result.RowsAffected()
     ...
@@ -141,11 +136,6 @@ Description: update WCU and RCU of an existing DynamoDB table specified by `tabl
 - Note: if `RCU` and `WRU` are both `0` or not specified, table will be created with `PAY_PER_REQUEST` billing mode; otherwise table will be creatd with `PROVISIONED` mode.
 - Note: there must be _at least one space_ before the `WITH` keyword.
 
-Example:
-```sql
-CREATE TABLE demo WITH PK=id:string WITH rcu=3 WITH wcu=5
-```
-
 ### DROP TABLE
 
 Syntax:
@@ -157,7 +147,7 @@ Alias: `DELETE TABLE`
 
 Example:
 ```go
-result, err := db.Exec(`DROP TABLE...`)
+result, err := db.Exec(`DROP TABLE IF EXISTS demo`)
 if err == nil {
     numAffectedRow, err := result.RowsAffected()
     ...
@@ -170,8 +160,3 @@ Description: delete an existing DynamoDB table specified by `table-name`.
 - If the specified table does not exist:
   - If `IF EXISTS` is supplied: `RowsAffected()` returns `0, nil`
   - If `IF EXISTS` is _not_ supplied: `RowsAffected()` returns `_, error`
-
-Example:
-```sql
-DROP TABLE IF EXISTS demo
-```
