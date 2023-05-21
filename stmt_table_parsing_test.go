@@ -20,6 +20,11 @@ func TestStmtCreateTable_parse(t *testing.T) {
 			expected: &StmtCreateTable{tableName: "demo", pkName: "id", pkType: "STRING"},
 		},
 		{
+			name:     "with_sk",
+			sql:      "CREATE TABLE demo WITH pk=id:string with SK=grade:binary",
+			expected: &StmtCreateTable{tableName: "demo", pkName: "id", pkType: "STRING", skName: aws.String("grade"), skType: aws.String("BINARY")},
+		},
+		{
 			name:     "with_rcu_wcu",
 			sql:      "CREATE TABLE IF NOT EXISTS demo WITH pk=id:number, with WCU=1 WITH rcu=3",
 			expected: &StmtCreateTable{tableName: "demo", ifNotExists: true, pkName: "id", pkType: "NUMBER", wcu: aws.Int64(1), rcu: aws.Int64(3)},
