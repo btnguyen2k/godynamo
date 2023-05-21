@@ -35,8 +35,8 @@ func Test_Exec_CreateTable(t *testing.T) {
 		{name: "basic", sql: `CREATE TABLE tbltemp1 WITH PK=id:string`},
 		{name: "if_not_exists", sql: `CREATE TABLE IF NOT EXISTS tbltemp1 WITH PK=id:string`},
 		{name: "with_sk", sql: `CREATE TABLE tbltemp2 WITH PK=id:string WITH sk=grade:number, WITH class=standard`},
-		{name: "with_rcu_wcu", sql: `CREATE TABLE tbltemp3 WITH PK=id:string WITH rcu=1 WITH wcu=2 WITH class=standard_ia`},
-		{name: "with_lsi", sql: `CREATE TABLE tbltemp4 WITH PK=id:string WITH LSI=index1:grade:number, WITH LSI=index2:dob:string:*, WITH LSI=index3:yob:binary:a,b,c`},
+		{name: "with_rcu_wcu", sql: `CREATE TABLE tbltemp3 WITH PK=id:number WITH rcu=1 WITH wcu=2 WITH class=standard_ia`},
+		{name: "with_lsi", sql: `CREATE TABLE tbltemp4 WITH PK=id:binary WITH SK=username:string WITH LSI=index1:grade:number, WITH LSI=index2:dob:string:*, WITH LSI=index3:yob:binary:a,b,c`},
 	}
 
 	for _, testCase := range testData {
