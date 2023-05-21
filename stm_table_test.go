@@ -125,3 +125,70 @@ func TestStmtAlterTable_parse(t *testing.T) {
 		})
 	}
 }
+
+func TestStmtDropTable_parse(t *testing.T) {
+	testName := "TestStmtDropTable_parse"
+	testData := []struct {
+		name     string
+		sql      string
+		expected *StmtDropTable
+	}{
+		{
+			name:     "basic",
+			sql:      "DROP TABLE demo",
+			expected: &StmtDropTable{tableName: "demo"},
+		},
+		{
+			name:     "if_exists",
+			sql:      "DROP TABLE IF EXISTS demo",
+			expected: &StmtDropTable{tableName: "demo", ifExists: true},
+		},
+	}
+	for _, testCase := range testData {
+		t.Run(testCase.name, func(t *testing.T) {
+			stmt, err := parseQuery(nil, testCase.sql)
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name, err)
+			}
+			stmtDropTable, ok := stmt.(*StmtDropTable)
+			if !ok {
+				t.Fatalf("%s failed: expected StmtDropTable but received %T", testName+"/"+testCase.name, stmt)
+			}
+			stmtDropTable.Stmt = nil
+			if !reflect.DeepEqual(stmtDropTable, testCase.expected) {
+				t.Fatalf("%s failed:\nexpected %#v\nreceived %#v", testName+"/"+testCase.name, testCase.expected, stmtDropTable)
+			}
+		})
+	}
+}
+
+func TestStmtDescribeTable_parse(t *testing.T) {
+	testName := "TestStmtDescribeTable_parse"
+	testData := []struct {
+		name     string
+		sql      string
+		expected *StmtDescribeTable
+	}{
+		{
+			name:     "basic",
+			sql:      "DESCRIBE TABLE demo",
+			expected: &StmtDescribeTable{tableName: "demo"},
+		},
+	}
+	for _, testCase := range testData {
+		t.Run(testCase.name, func(t *testing.T) {
+			stmt, err := parseQuery(nil, testCase.sql)
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name, err)
+			}
+			stmtDescribeTable, ok := stmt.(*StmtDescribeTable)
+			if !ok {
+				t.Fatalf("%s failed: expected StmtDescribeTable but received %T", testName+"/"+testCase.name, stmt)
+			}
+			stmtDescribeTable.Stmt = nil
+			if !reflect.DeepEqual(stmtDescribeTable, testCase.expected) {
+				t.Fatalf("%s failed:\nexpected %#v\nreceived %#v", testName+"/"+testCase.name, testCase.expected, stmtDescribeTable)
+			}
+		})
+	}
+}
