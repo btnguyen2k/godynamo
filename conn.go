@@ -22,11 +22,11 @@ func (c *Conn) Begin() (driver.Tx, error) {
 	return nil, errors.New("transaction is not supported")
 }
 
-// CheckNamedValue implements driver.NamedValueChecker.CheckNamedValue.
-func (c *Conn) CheckNamedValue(value *driver.NamedValue) error {
-	// since DynamoDB is document db, it accepts any value types
-	return nil
-}
+// // CheckNamedValue implements driver.NamedValueChecker.CheckNamedValue.
+// func (c *Conn) CheckNamedValue(value *driver.NamedValue) error {
+// 	// since DynamoDB is document db, it accepts any value types
+// 	return nil
+// }
 
 // Prepare implements driver.Conn.Prepare.
 func (c *Conn) Prepare(query string) (driver.Stmt, error) {

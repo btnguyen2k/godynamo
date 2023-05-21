@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"reflect"
 	"sort"
 	"strconv"
@@ -314,20 +313,20 @@ func (r *RowsListTables) ColumnTypeDatabaseTypeName(index int) string {
 	return "STRING"
 }
 
-// ColumnTypeLength implements driver.RowsColumnTypeLength.ColumnTypeLength
-func (r *RowsListTables) ColumnTypeLength(index int) (length int64, ok bool) {
-	return math.MaxInt64, true
-}
+// // ColumnTypeLength implements driver.RowsColumnTypeLength.ColumnTypeLength
+// func (r *RowsListTables) ColumnTypeLength(index int) (length int64, ok bool) {
+// 	return math.MaxInt64, true
+// }
 
-// ColumnTypeNullable implements driver.RowsColumnTypeNullable.ColumnTypeNullable
-func (r *RowsListTables) ColumnTypeNullable(index int) (nullable, ok bool) {
-	return false, true
-}
+// // ColumnTypeNullable implements driver.RowsColumnTypeNullable.ColumnTypeNullable
+// func (r *RowsListTables) ColumnTypeNullable(index int) (nullable, ok bool) {
+// 	return false, true
+// }
 
-// ColumnTypePrecisionScale implements driver.RowsColumnTypePrecisionScale.ColumnTypePrecisionScale
-func (r *RowsListTables) ColumnTypePrecisionScale(index int) (precision, scale int64, ok bool) {
-	return 0, 0, false
-}
+// // ColumnTypePrecisionScale implements driver.RowsColumnTypePrecisionScale.ColumnTypePrecisionScale
+// func (r *RowsListTables) ColumnTypePrecisionScale(index int) (precision, scale int64, ok bool) {
+// 	return 0, 0, false
+// }
 
 /*----------------------------------------------------------------------*/
 
