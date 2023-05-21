@@ -56,6 +56,7 @@ func main() {
   - `LIST TABLES`
   - `ALTER TABLE`
   - `DROP TABLE`
+  - `DESCRIBE TABLE`
 
 ### CREATE TABLE
 
@@ -168,3 +169,20 @@ Description: delete an existing DynamoDB table specified by `table-name`.
 - If the specified table does not exist:
   - If `IF EXISTS` is supplied: `RowsAffected()` returns `0, nil`
   - If `IF EXISTS` is _not_ supplied: `RowsAffected()` returns `_, error`
+
+### DESCRIBE TABLE
+
+Syntax:
+```sql
+DESCRIBE TABLE <table-name>
+```
+
+Example:
+```go
+result, err := db.Query(`DESCRIBE TABLE demo`)
+if err == nil {
+	...
+}
+```
+
+Description: return info of a DynamoDB table specified by `table-name`.

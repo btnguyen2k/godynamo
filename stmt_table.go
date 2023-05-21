@@ -527,7 +527,7 @@ func (s *StmtDescribeTable) Query(_ []driver.Value) (driver.Rows, error) {
 		TableName: &s.tableName,
 	}
 	output, err := s.conn.client.DescribeTable(context.Background(), input)
-	result := &RowsDescribeTable{}
+	result := &RowsDescribeTable{count: 1}
 	if err == nil {
 		js, _ := json.Marshal(output.Table)
 		json.Unmarshal(js, &result.tableInfo)
@@ -535,7 +535,10 @@ func (s *StmtDescribeTable) Query(_ []driver.Value) (driver.Rows, error) {
 			result.columnList = append(result.columnList, k)
 		}
 		sort.Strings(result.columnList)
-		result.count = 1
+		result.columnTypeList = make([]reflect.Type, len(result.columnList))
+		for i, col := range result.columnList {
+			result.columnTypeList[i] = reflect.TypeOf(result.tableInfo[col])
+		}
 	}
 	if IsAwsError(err, "ResourceNotFoundException") {
 		err = nil
@@ -551,10 +554,11 @@ func (s *StmtDescribeTable) Exec(_ []driver.Value) (driver.Result, error) {
 
 // RowsDescribeTable captures the result from DESCRIBE TABLE operation.
 type RowsDescribeTable struct {
-	count       int
-	columnList  []string
-	tableInfo   map[string]interface{}
-	cursorCount int
+	count          int
+	columnList     []string
+	columnTypeList []reflect.Type
+	tableInfo      map[string]interface{}
+	cursorCount    int
 }
 
 // Columns implements driver.Rows.Columns.
@@ -578,3 +582,43 @@ func (r *RowsDescribeTable) Next(dest []driver.Value) error {
 	r.cursorCount++
 	return nil
 }
+
+// ColumnTypeScanType implements driver.RowsColumnTypeScanType.ColumnTypeScanType
+func (r *RowsDescribeTable) ColumnTypeScanType(index int) reflect.Type {
+	return r.columnTypeList[index]
+}
+
+// ColumnTypeDatabaseTypeName implements driver.RowsColumnTypeDatabaseTypeName.ColumnTypeDatabaseTypeName
+func (r *RowsDescribeTable) ColumnTypeDatabaseTypeName(index int) string {
+	if r.columnTypeList[index] == nil {
+		return ""
+	}
+	switch r.columnTypeList[index].Kind() {
+	case reflect.Bool:
+		return "BOOLEAN"
+	case reflect.String:
+		return "STRING"
+	case reflect.Float32, reflect.Float64:
+		return "NUMBER"
+	case reflect.Array, reflect.Slice:
+		return "ARRAY"
+	case reflect.Map:
+		return "MAP"
+	}
+	return ""
+}
+
+// // ColumnTypeLength implements driver.RowsColumnTypeLength.ColumnTypeLength
+// func (r *RowsDescribeTable) ColumnTypeLength(index int) (length int64, ok bool) {
+// 	return math.MaxInt64, true
+// }
+
+// // ColumnTypeNullable implements driver.RowsColumnTypeNullable.ColumnTypeNullable
+// func (r *RowsDescribeTable) ColumnTypeNullable(index int) (nullable, ok bool) {
+// 	return false, true
+// }
+
+// // ColumnTypePrecisionScale implements driver.RowsColumnTypePrecisionScale.ColumnTypePrecisionScale
+// func (r *RowsDescribeTable) ColumnTypePrecisionScale(index int) (precision, scale int64, ok bool) {
+// 	return 0, 0, false
+// }
