@@ -11,13 +11,17 @@ Go driver for [AWS DynamoDB](https://aws.amazon.com/dynamodb/) which can be used
 ## Usage
 
 ```go
+package main
+
 import (
 	"database/sql"
+	"fmt"
+
 	_ "github.com/btnguyen2k/gocosmos"
 )
 
 func main() {
-    driver := "godynamo"
+	driver := "godynamo"
 	dsn := "Region=<aws-region>;AkId=<access-key-id>;SecretKey=<secret-key>"
 	db, err := sql.Open(driver, dsn)
 	if err != nil {
@@ -25,11 +29,11 @@ func main() {
 	}
 	defer db.Close()
 
-    // db instance is ready to use
-    dbrows, err := db.Query(`LIST TABLES`)
-    if err != nil {
-        panic(err)
-    }
+	// db instance is ready to use
+	dbrows, err := db.Query(`LIST TABLES`)
+	if err != nil {
+		panic(err)
+	}
 	for dbRows.Next() {
 		var val interface{}
 		err := dbRows.Scan(&val)
@@ -72,8 +76,8 @@ Example:
 ```go
 result, err := db.Exec(`CREATE TABLE demo WITH PK=id:string WITH rcu=3 WITH wcu=5`)
 if err == nil {
-    numAffectedRow, err := result.RowsAffected()
-    ...
+	numAffectedRow, err := result.RowsAffected()
+	...
 }
 ```
 
@@ -107,7 +111,7 @@ Example:
 ```go
 result, err := db.Query(`LIST TABLES`)
 if err == nil {
-    ...
+	...
 }
 ```
 
@@ -126,8 +130,8 @@ Example:
 ```go
 result, err := db.Exec(`ALTER TABLE demo WITH rcu=0 WITH wcu=0 WITH CLASS=STANDARD_IA`)
 if err == nil {
-    numAffectedRow, err := result.RowsAffected()
-    ...
+	numAffectedRow, err := result.RowsAffected()
+	...
 }
 ```
 
@@ -153,8 +157,8 @@ Example:
 ```go
 result, err := db.Exec(`DROP TABLE IF EXISTS demo`)
 if err == nil {
-    numAffectedRow, err := result.RowsAffected()
-    ...
+	numAffectedRow, err := result.RowsAffected()
+	...
 }
 ```
 

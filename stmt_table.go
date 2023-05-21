@@ -9,6 +9,7 @@ import (
 	"io"
 	"math"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -270,6 +271,7 @@ func (s *StmtListTables) Query(_ []driver.Value) (driver.Rows, error) {
 			tables:      output.TableNames,
 			cursorCount: 0,
 		}
+		sort.Strings(rows.(*RowsListTables).tables)
 	}
 	return rows, err
 }
@@ -532,6 +534,7 @@ func (s *StmtDescribeTable) Query(_ []driver.Value) (driver.Rows, error) {
 		for k := range result.tableInfo {
 			result.columnList = append(result.columnList, k)
 		}
+		sort.Strings(result.columnList)
 		result.count = 1
 	}
 	if IsAwsError(err, "ResourceNotFoundException") {
