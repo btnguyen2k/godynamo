@@ -3,14 +3,18 @@ package godynamo
 import (
 	"context"
 	"database/sql/driver"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"math"
+	"reflect"
 	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/btnguyen2k/consu/reddo"
 )
 
 type lsiDef struct {
@@ -27,11 +31,12 @@ type lsiDef struct {
 //		CREATE TABLE [IF NOT EXISTS] <table-name>
 //		<WITH PK=pk-attr-name:data-type>
 //		[[,] WITH SK=sk-attr-name:data-type]
-//		[[,] WITH RCU=rcu][, WITH WCU=wcu]
+//		[[,] WITH wcu=<number>[,] WITH rcu=<number>]
 //		[[,] WITH LSI=index-name1:attr-name1:data-type]
 //		[[,] WITH LSI=index-name2:attr-name2:data-type:*]
 //		[[,] WITH LSI=index-name2:attr-name2:data-type:nonKeyAttr1,nonKeyAttr2,nonKeyAttr3,...]
 //		[[,] WITH LSI...]
+//		[[,] WITH CLASS=<table-class>]
 //
 //	- PK: partition key, format name:type (type is one of String, Number, Binary).
 //	- SK: sort key, format name:type (type is one of String, Number, Binary).
@@ -42,6 +47,7 @@ type lsiDef struct {
 //		- projectionAttrs is not specified: only key attributes are included in projection (ProjectionType=KEYS_ONLY).
 //	- RCU: an integer specifying DynamoDB's read capacity.
 //	- WCU: an integer specifying DynamoDB's write capacity.
+//	- CLASS: table class, either STANDARD (default) or STANDARD_IA.
 //	- If "IF NOT EXISTS" is specified, Exec will silently swallow the error "ResourceInUseException".
 //	- Note: if RCU and WRU are both 0 or not specified, table will be created with PAY_PER_REQUEST billing mode; otherwise table will be creatd with PROVISIONED mode.
 //	- Note: there must be at least one space before the WITH keyword.
@@ -50,8 +56,9 @@ type StmtCreateTable struct {
 	tableName      string
 	ifNotExists    bool
 	pkName, pkType string
-	skName, skType string
-	rcu, wcu       int64
+	tableClass     *string
+	skName, skType *string
+	rcu, wcu       *int64
 	lsi            []lsiDef
 	withOptsStr    string
 }
@@ -76,12 +83,17 @@ func (s *StmtCreateTable) parse() error {
 
 	// sort key
 	skTokens := strings.SplitN(s.withOpts["SK"].FirstString(), ":", 2)
-	s.skName = strings.TrimSpace(skTokens[0])
-	if len(skTokens) > 1 {
-		s.skType = strings.TrimSpace(strings.ToUpper(skTokens[1]))
-	}
-	if _, ok := dataTypes[s.skType]; !ok && s.skName != "" {
-		return fmt.Errorf("invalid type SortKey <%s>, accepts values are BINARY, NUMBER and STRING", s.skType)
+	skName := strings.TrimSpace(skTokens[0])
+	if skName != "" {
+		s.skName = &skName
+		skType := ""
+		if len(skTokens) > 1 {
+			skType = strings.TrimSpace(strings.ToUpper(skTokens[1]))
+		}
+		if _, ok := dataTypes[skType]; !ok {
+			return fmt.Errorf("invalid type SortKey <%s>, accepts values are BINARY, NUMBER and STRING", skType)
+		}
+		s.skType = &skType
 	}
 
 	// local secondary index
@@ -108,13 +120,22 @@ func (s *StmtCreateTable) parse() error {
 		s.lsi = append(s.lsi, lsiDef)
 	}
 
+	// table class
+	if _, ok := s.withOpts["CLASS"]; ok {
+		tableClass := strings.ToUpper(s.withOpts["CLASS"].FirstString())
+		if tableClasses[tableClass] == "" {
+			return fmt.Errorf("invalid table class <%s>, accepts values are STANDARD, STANDARD_IA", s.withOpts["CLASS"].FirstString())
+		}
+		s.tableClass = &tableClass
+	}
+
 	// RCU
 	if _, ok := s.withOpts["RCU"]; ok {
 		rcu, err := strconv.ParseInt(s.withOpts["RCU"].FirstString(), 10, 64)
 		if err != nil || rcu < 0 {
 			return fmt.Errorf("invalid RCU value: %s", s.withOpts["RCU"])
 		}
-		s.rcu = rcu
+		s.rcu = &rcu
 	}
 	// WCU
 	if _, ok := s.withOpts["WCU"]; ok {
@@ -122,7 +143,7 @@ func (s *StmtCreateTable) parse() error {
 		if err != nil || wcu < 0 {
 			return fmt.Errorf("invalid WCU value: %s", s.withOpts["WCU"])
 		}
-		s.wcu = wcu
+		s.wcu = &wcu
 	}
 
 	return nil
@@ -145,14 +166,12 @@ func (s *StmtCreateTable) Query(_ []driver.Value) (driver.Rows, error) {
 func (s *StmtCreateTable) Exec(_ []driver.Value) (driver.Result, error) {
 	attrDefs := make([]types.AttributeDefinition, 0, 2)
 	attrDefs = append(attrDefs, types.AttributeDefinition{AttributeName: &s.pkName, AttributeType: dataTypes[s.pkType]})
-	if s.skName != "" {
-		attrDefs = append(attrDefs, types.AttributeDefinition{AttributeName: &s.skName, AttributeType: dataTypes[s.skType]})
-	}
-
 	keySchema := make([]types.KeySchemaElement, 0, 2)
 	keySchema = append(keySchema, types.KeySchemaElement{AttributeName: &s.pkName, KeyType: keyTypes["HASH"]})
-	if s.skName != "" {
-		keySchema = append(keySchema, types.KeySchemaElement{AttributeName: &s.skName, KeyType: keyTypes["RANGE"]})
+
+	if s.skName != nil {
+		attrDefs = append(attrDefs, types.AttributeDefinition{AttributeName: s.skName, AttributeType: dataTypes[*s.skType]})
+		keySchema = append(keySchema, types.KeySchemaElement{AttributeName: s.skName, KeyType: keyTypes["RANGE"]})
 	}
 
 	lsi := make([]types.LocalSecondaryIndex, len(s.lsi))
@@ -181,12 +200,16 @@ func (s *StmtCreateTable) Exec(_ []driver.Value) (driver.Result, error) {
 		KeySchema:             keySchema,
 		LocalSecondaryIndexes: lsi,
 	}
-	if s.rcu == 0 && s.wcu == 0 {
+	if s.tableClass != nil {
+		input.TableClass = tableClasses[*s.tableClass]
+	}
+	if (s.rcu == nil || *s.rcu == 0) && (s.wcu == nil || *s.wcu == 0) {
 		input.BillingMode = types.BillingModePayPerRequest
 	} else {
+		input.BillingMode = types.BillingModeProvisioned
 		input.ProvisionedThroughput = &types.ProvisionedThroughput{
-			ReadCapacityUnits:  &s.rcu,
-			WriteCapacityUnits: &s.wcu,
+			ReadCapacityUnits:  s.rcu,
+			WriteCapacityUnits: s.wcu,
 		}
 	}
 	_, err := s.conn.client.CreateTable(context.Background(), input)
@@ -279,6 +302,31 @@ func (r *RowsListTables) Next(dest []driver.Value) error {
 	return nil
 }
 
+// ColumnTypeScanType implements driver.RowsColumnTypeScanType.ColumnTypeScanType
+func (r *RowsListTables) ColumnTypeScanType(index int) reflect.Type {
+	return reddo.TypeString
+}
+
+// ColumnTypeDatabaseTypeName implements driver.RowsColumnTypeDatabaseTypeName.ColumnTypeDatabaseTypeName
+func (r *RowsListTables) ColumnTypeDatabaseTypeName(index int) string {
+	return "STRING"
+}
+
+// ColumnTypeLength implements driver.RowsColumnTypeLength.ColumnTypeLength
+func (r *RowsListTables) ColumnTypeLength(index int) (length int64, ok bool) {
+	return math.MaxInt64, true
+}
+
+// ColumnTypeNullable implements driver.RowsColumnTypeNullable.ColumnTypeNullable
+func (r *RowsListTables) ColumnTypeNullable(index int) (nullable, ok bool) {
+	return false, true
+}
+
+// ColumnTypePrecisionScale implements driver.RowsColumnTypePrecisionScale.ColumnTypePrecisionScale
+func (r *RowsListTables) ColumnTypePrecisionScale(index int) (precision, scale int64, ok bool) {
+	return 0, 0, false
+}
+
 /*----------------------------------------------------------------------*/
 
 // StmtAlterTable implements "ALTER TABLE" operation.
@@ -286,16 +334,19 @@ func (r *RowsListTables) Next(dest []driver.Value) error {
 // Syntax:
 //
 //		ALTER TABLE <table-name>
-//		WITH RCU=rcu[,] WITH WCU=wcu
+//		[WITH RCU=rcu[,] WITH WCU=wcu]
+//		[[,] WITH CLASS=<table-class>]
 //
 //	- RCU: an integer specifying DynamoDB's read capacity.
 //	- WCU: an integer specifying DynamoDB's write capacity.
-//	- Note: if RCU and WRU are both 0 or not specified, table will be created with PAY_PER_REQUEST billing mode; otherwise table will be creatd with PROVISIONED mode.
+//	- CLASS: table class, either STANDARD (default) or STANDARD_IA.
+//	- Note: if RCU and WRU are both 0, table will be created with PAY_PER_REQUEST billing mode; otherwise table will be creatd with PROVISIONED mode.
 //	- Note: there must be at least one space before the WITH keyword.
 type StmtAlterTable struct {
 	*Stmt
 	tableName   string
-	rcu, wcu    int64
+	rcu, wcu    *int64
+	tableClass  *string
 	withOptsStr string
 }
 
@@ -304,15 +355,22 @@ func (s *StmtAlterTable) parse() error {
 		return err
 	}
 
+	// table class
+	if _, ok := s.withOpts["CLASS"]; ok {
+		tableClass := strings.ToUpper(s.withOpts["CLASS"].FirstString())
+		if tableClasses[tableClass] == "" {
+			return fmt.Errorf("invalid table class <%s>, accepts values are STANDARD, STANDARD_IA", s.withOpts["CLASS"].FirstString())
+		}
+		s.tableClass = &tableClass
+	}
+
 	// RCU
 	if _, ok := s.withOpts["RCU"]; ok {
 		rcu, err := strconv.ParseInt(s.withOpts["RCU"].FirstString(), 10, 64)
 		if err != nil || rcu < 0 {
 			return fmt.Errorf("invalid RCU value: %s", s.withOpts["RCU"])
 		}
-		s.rcu = rcu
-	} else {
-		return fmt.Errorf("RCU not specified")
+		s.rcu = &rcu
 	}
 	// WCU
 	if _, ok := s.withOpts["WCU"]; ok {
@@ -320,9 +378,7 @@ func (s *StmtAlterTable) parse() error {
 		if err != nil || wcu < 0 {
 			return fmt.Errorf("invalid WCU value: %s", s.withOpts["WCU"])
 		}
-		s.wcu = wcu
-	} else {
-		return fmt.Errorf("WCU not specified")
+		s.wcu = &wcu
 	}
 
 	return nil
@@ -346,13 +402,18 @@ func (s *StmtAlterTable) Exec(_ []driver.Value) (driver.Result, error) {
 	input := &dynamodb.UpdateTableInput{
 		TableName: &s.tableName,
 	}
-	if s.rcu == 0 && s.wcu == 0 {
-		input.BillingMode = types.BillingModePayPerRequest
-	} else {
-		input.BillingMode = types.BillingModeProvisioned
-		input.ProvisionedThroughput = &types.ProvisionedThroughput{
-			ReadCapacityUnits:  &s.rcu,
-			WriteCapacityUnits: &s.wcu,
+	if s.tableClass != nil {
+		input.TableClass = tableClasses[*s.tableClass]
+	}
+	if s.rcu != nil || s.wcu != nil {
+		if s.rcu != nil && *s.rcu == 0 && s.wcu != nil && *s.wcu == 0 {
+			input.BillingMode = types.BillingModePayPerRequest
+		} else {
+			input.BillingMode = types.BillingModeProvisioned
+			input.ProvisionedThroughput = &types.ProvisionedThroughput{
+				ReadCapacityUnits:  s.rcu,
+				WriteCapacityUnits: s.wcu,
+			}
 		}
 	}
 	_, err := s.conn.client.UpdateTable(context.Background(), input)
@@ -437,4 +498,80 @@ func (r *ResultDropTable) RowsAffected() (int64, error) {
 		return 1, nil
 	}
 	return 0, nil
+}
+
+/*----------------------------------------------------------------------*/
+
+// StmtDescribeTable implements "DESCRIBE TABLE" operation.
+//
+// Syntax:
+//
+//	DESCRIBE TABLE <table-name>
+type StmtDescribeTable struct {
+	*Stmt
+	tableName string
+}
+
+func (s *StmtDescribeTable) validate() error {
+	if s.tableName == "" {
+		return errors.New("table name is missing")
+	}
+	return nil
+}
+
+// Query implements driver.Stmt.Query.
+func (s *StmtDescribeTable) Query(_ []driver.Value) (driver.Rows, error) {
+	input := &dynamodb.DescribeTableInput{
+		TableName: &s.tableName,
+	}
+	output, err := s.conn.client.DescribeTable(context.Background(), input)
+	result := &RowsDescribeTable{}
+	if err == nil {
+		js, _ := json.Marshal(output.Table)
+		json.Unmarshal(js, &result.tableInfo)
+		for k := range result.tableInfo {
+			result.columnList = append(result.columnList, k)
+		}
+		result.count = 1
+	}
+	if IsAwsError(err, "ResourceNotFoundException") {
+		err = nil
+	}
+	return result, err
+}
+
+// Exec implements driver.Stmt.Exec.
+// This function is not implemented, use Query instead.
+func (s *StmtDescribeTable) Exec(_ []driver.Value) (driver.Result, error) {
+	return nil, errors.New("this operation is not supported, please use Query")
+}
+
+// RowsDescribeTable captures the result from DESCRIBE TABLE operation.
+type RowsDescribeTable struct {
+	count       int
+	columnList  []string
+	tableInfo   map[string]interface{}
+	cursorCount int
+}
+
+// Columns implements driver.Rows.Columns.
+func (r *RowsDescribeTable) Columns() []string {
+	return r.columnList
+}
+
+// Close implements driver.Rows.Close.
+func (r *RowsDescribeTable) Close() error {
+	return nil
+}
+
+// Next implements driver.Rows.Next.
+func (r *RowsDescribeTable) Next(dest []driver.Value) error {
+	if r.cursorCount >= r.count {
+		return io.EOF
+	}
+	for i, colName := range r.columnList {
+		dest[i] = r.tableInfo[colName]
+	}
+	r.cursorCount++
+	return nil
 }

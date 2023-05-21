@@ -34,6 +34,11 @@ var (
 		"HASH":  "HASH",
 		"RANGE": "RANGE",
 	}
+
+	tableClasses = map[string]types.TableClass{
+		"STANDARD":    types.TableClassStandard,
+		"STANDARD_IA": types.TableClassStandardInfrequentAccess,
+	}
 )
 
 // IsAwsError returns true if err is an AWS-specific error and it matches awsErrCode.
@@ -54,7 +59,7 @@ type Driver struct {
 //
 // connStr is expected in the following format:
 //
-//	Region=<region>[Endpoint=<dynamodb-endpoint>]
+//	Region=<region>;AkId=<aws-key-id>;Secret_Key=<aws-secret-key>[;Endpoint=<dynamodb-endpoint>]
 //
 // If not supplied, default value for TimeoutMs is 10 seconds, Version is defaultApiVersion (which is "2018-12-31"), AutoId is true, and InsecureSkipVerify is false
 //

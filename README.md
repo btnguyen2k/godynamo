@@ -60,12 +60,12 @@ Syntax:
 CREATE TABLE [IF NOT EXIST] <table-name>
 WITH PK=<partition-key-name>:<data-type>
 [[,] WITH SK=<sort-key-name>:<data-type>]
-[[,] WITH wcu=<number>]
-[[,] WITH rcu=<number>]
+[[,] WITH wcu=<number>[,] WITH rcu=<number>]
 [[,] WITH LSI=index-name1:attr-name1:data-type]
 [[,] WITH LSI=index-name2:attr-name2:data-type:*]
 [[,] WITH LSI=index-name2:attr-name2:data-type:nonKeyAttr1,nonKeyAttr2,nonKeyAttr3,...]
 [[,] WITH LSI...]
+[[,] WITH CLASS=<table-class>]
 ```
 
 Example:
@@ -92,6 +92,7 @@ Description: create a DynamoDB table specified by `table-name`.
   - `projectionAttrs=attr1,attr2,...`: specified attributes from the original table are included in projection (`ProjectionType=INCLUDE`).
   - _projectionAttrs is not specified_: only key attributes are included in projection (`ProjectionType=KEYS_ONLY`).
 - `data-type`: must be one of `BINARY`, `NUMBER` or `STRING`.
+- `table-class` is either `STANDARD` (default) or `STANDARD_IA`.
 - Note: if `RCU` and `WRU` are both `0` or not specified, table will be created with `PAY_PER_REQUEST` billing mode; otherwise table will be creatd with `PROVISIONED` mode.
 - Note: there must be _at least one space_ before the `WITH` keyword.
 
@@ -116,24 +117,27 @@ Description: return list of all DynamoDB tables.
 
 Syntax:
 ```sql
-ALTER TABLE <table-name> WITH wcu=<number> WITH rcu=<number>
+ALTER TABLE <table-name>
+[WITH wcu=<number>[,] WITH rcu=<number>]
+[[,] WITH CLASS=<table-class>]
 ```
 
 Example:
 ```go
-result, err := db.Exec(`ALTER TABLE demo WITH rcu=0 WITH wcu=0`)
+result, err := db.Exec(`ALTER TABLE demo WITH rcu=0 WITH wcu=0 WITH CLASS=STANDARD_IA`)
 if err == nil {
     numAffectedRow, err := result.RowsAffected()
     ...
 }
 ```
 
-Description: update WCU and RCU of an existing DynamoDB table specified by `table-name`.
+Description: update WCU/RCU or table-class of an existing DynamoDB table specified by `table-name`.
 
 - If the statement is executed successfully, `RowsAffected()` returns `1, nil`.
 - `RCU`: read capacity unit.
 - `WCU`: write capacity unit.
-- Note: if `RCU` and `WRU` are both `0` or not specified, table will be created with `PAY_PER_REQUEST` billing mode; otherwise table will be creatd with `PROVISIONED` mode.
+- `table-class` is either `STANDARD` (default) or `STANDARD_IA`.
+- Note: if `RCU` and `WRU` are both `0`, table will be created with `PAY_PER_REQUEST` billing mode; otherwise table will be creatd with `PROVISIONED` mode.
 - Note: there must be _at least one space_ before the `WITH` keyword.
 
 ### DROP TABLE
