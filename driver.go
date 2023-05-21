@@ -3,6 +3,7 @@ package godynamo
 import (
 	"database/sql"
 	"database/sql/driver"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -83,14 +84,30 @@ func (d *Driver) Open(connStr string) (driver.Conn, error) {
 	if err != nil || timeoutMs < 0 {
 		timeoutMs = 10000
 	}
-	opts := dynamodb.Options{
-		Credentials: credentials.NewStaticCredentialsProvider(params["AKID"], params["SECRET_KEY"], ""),
-		HTTPClient:  http.NewBuildableClient().WithTimeout(time.Millisecond * time.Duration(timeoutMs)),
-		Region:      params["REGION"],
+	akid := params["AKID"]
+	if akid == "" {
+		akid = os.Getenv("AWS_ACCESS_KEY_ID")
 	}
-	if params["ENDPOINT"] != "" {
-		opts.EndpointResolver = dynamodb.EndpointResolverFromURL(params["ENDPOINT"])
-		if strings.HasPrefix(params["ENDPOINT"], "http://") {
+	secretKey := params["SECRET_KEY"]
+	if secretKey == "" {
+		secretKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
+	}
+	region := params["REGION"]
+	if region == "" {
+		region = os.Getenv("AWS_REGION")
+	}
+	opts := dynamodb.Options{
+		Credentials: credentials.NewStaticCredentialsProvider(akid, secretKey, ""),
+		HTTPClient:  http.NewBuildableClient().WithTimeout(time.Millisecond * time.Duration(timeoutMs)),
+		Region:      region,
+	}
+	endpoint := params["ENDPOINT"]
+	if endpoint == "" {
+		endpoint = os.Getenv("AWS_DYNAMODB_ENDPOINT")
+	}
+	if endpoint != "" {
+		opts.EndpointResolver = dynamodb.EndpointResolverFromURL(endpoint)
+		if strings.HasPrefix(endpoint, "http://") {
 			opts.EndpointOptions.DisableHTTPS = true
 		}
 	}
