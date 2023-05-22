@@ -18,8 +18,8 @@ import (
 )
 
 type lsiDef struct {
-	indexName, fieldName, fieldType string
-	projectedFields                 string
+	indexName, attrName, attrType string
+	projectedAttrs                string
 }
 
 /*----------------------------------------------------------------------*/
@@ -101,20 +101,20 @@ func (s *StmtCreateTable) parse() error {
 		lsiTokens := strings.SplitN(lsiStr, ":", 4)
 		lsiDef := lsiDef{indexName: strings.TrimSpace(lsiTokens[0])}
 		if len(lsiTokens) > 1 {
-			lsiDef.fieldName = strings.TrimSpace(lsiTokens[1])
+			lsiDef.attrName = strings.TrimSpace(lsiTokens[1])
 		}
 		if len(lsiTokens) > 2 {
-			lsiDef.fieldType = strings.TrimSpace(strings.ToUpper(lsiTokens[2]))
+			lsiDef.attrType = strings.TrimSpace(strings.ToUpper(lsiTokens[2]))
 		}
 		if len(lsiTokens) > 3 {
-			lsiDef.projectedFields = strings.TrimSpace(lsiTokens[3])
+			lsiDef.projectedAttrs = strings.TrimSpace(lsiTokens[3])
 		}
 		if lsiDef.indexName != "" {
-			if lsiDef.fieldName == "" {
+			if lsiDef.attrName == "" {
 				return fmt.Errorf("invalid LSI definition <%s>: empty field name", lsiDef.indexName)
 			}
-			if _, ok := dataTypes[lsiDef.fieldType]; !ok {
-				return fmt.Errorf("invalid type <%s> of LSI <%s>, accepts values are BINARY, NUMBER and STRING", lsiDef.fieldType, lsiDef.indexName)
+			if _, ok := dataTypes[lsiDef.attrType]; !ok {
+				return fmt.Errorf("invalid type <%s> of LSI <%s>, accepts values are BINARY, NUMBER and STRING", lsiDef.attrType, lsiDef.indexName)
 			}
 		}
 		s.lsi = append(s.lsi, lsiDef)
@@ -176,20 +176,20 @@ func (s *StmtCreateTable) Exec(_ []driver.Value) (driver.Result, error) {
 
 	lsi := make([]types.LocalSecondaryIndex, len(s.lsi))
 	for i := range s.lsi {
-		attrDefs = append(attrDefs, types.AttributeDefinition{AttributeName: &s.lsi[i].fieldName, AttributeType: dataTypes[s.lsi[i].fieldType]})
+		attrDefs = append(attrDefs, types.AttributeDefinition{AttributeName: &s.lsi[i].attrName, AttributeType: dataTypes[s.lsi[i].attrType]})
 		lsi[i] = types.LocalSecondaryIndex{
 			IndexName: &s.lsi[i].indexName,
 			KeySchema: []types.KeySchemaElement{
 				{AttributeName: &s.pkName, KeyType: keyTypes["HASH"]},
-				{AttributeName: &s.lsi[i].fieldName, KeyType: keyTypes["RANGE"]},
+				{AttributeName: &s.lsi[i].attrName, KeyType: keyTypes["RANGE"]},
 			},
 			Projection: &types.Projection{ProjectionType: types.ProjectionTypeKeysOnly},
 		}
-		if s.lsi[i].projectedFields == "*" {
+		if s.lsi[i].projectedAttrs == "*" {
 			lsi[i].Projection.ProjectionType = types.ProjectionTypeAll
-		} else if s.lsi[i].projectedFields != "" {
+		} else if s.lsi[i].projectedAttrs != "" {
 			lsi[i].Projection.ProjectionType = types.ProjectionTypeInclude
-			nonKeyAttrs := strings.Split(s.lsi[i].projectedFields, ",")
+			nonKeyAttrs := strings.Split(s.lsi[i].projectedAttrs, ",")
 			lsi[i].Projection.NonKeyAttributes = nonKeyAttrs
 		}
 	}

@@ -10,10 +10,52 @@ import (
 func TestStmtCreateTable_parse(t *testing.T) {
 	testName := "TestStmtCreateTable_parse"
 	testData := []struct {
-		name     string
-		sql      string
-		expected *StmtCreateTable
+		name      string
+		sql       string
+		expected  *StmtCreateTable
+		mustError bool
 	}{
+		{
+			name:      "no_table",
+			sql:       "CREATE TABLE  WITH pk=id:string",
+			mustError: true,
+		},
+		{
+			name:      "no_pk",
+			sql:       "CREATE TABLE demo",
+			mustError: true,
+		},
+		{
+			name:      "invalid_rcu",
+			sql:       "CREATE TABLE demo WITH pk=id:string WITH RCU=-1",
+			mustError: true,
+		},
+		{
+			name:      "invalid_wcu",
+			sql:       "CREATE TABLE demo WITH pk=id:string WITH wcu=-1",
+			mustError: true,
+		},
+		{
+			name:      "invalid_pk_type",
+			sql:       "CREATE TABLE demo WITH pk=id:int",
+			mustError: true,
+		},
+		{
+			name:      "invalid_sk_type",
+			sql:       "CREATE TABLE demo WITH pk=id:string WITH sk=grade:int",
+			mustError: true,
+		},
+		{
+			name:      "invalid_table_class",
+			sql:       "CREATE TABLE demo WITH pk=id:string WITH class=table_class",
+			mustError: true,
+		},
+		{
+			name:      "invalid_lsi_type",
+			sql:       "CREATE TABLE demo WITH pk=id:string WITH LSI=idxname:attrname:float",
+			mustError: true,
+		},
+
 		{
 			name:     "basic",
 			sql:      "CREATE TABLE demo WITH pk=id:string",
@@ -38,15 +80,21 @@ func TestStmtCreateTable_parse(t *testing.T) {
 			name: "with_lsi",
 			sql:  "CREATE TABLE IF NOT EXISTS demo WITH pk=id:number, with LSI=i1:f1:string, with LSI=i2:f2:number:*, , with LSI=i3:f3:binary:a,b,c",
 			expected: &StmtCreateTable{tableName: "demo", ifNotExists: true, pkName: "id", pkType: "NUMBER", lsi: []lsiDef{
-				{indexName: "i1", fieldName: "f1", fieldType: "STRING"},
-				{indexName: "i2", fieldName: "f2", fieldType: "NUMBER", projectedFields: "*"},
-				{indexName: "i3", fieldName: "f3", fieldType: "BINARY", projectedFields: "a,b,c"},
+				{indexName: "i1", attrName: "f1", attrType: "STRING"},
+				{indexName: "i2", attrName: "f2", attrType: "NUMBER", projectedAttrs: "*"},
+				{indexName: "i3", attrName: "f3", attrType: "BINARY", projectedAttrs: "a,b,c"},
 			}},
 		},
 	}
 	for _, testCase := range testData {
 		t.Run(testCase.name, func(t *testing.T) {
 			stmt, err := parseQuery(nil, testCase.sql)
+			if testCase.mustError && err == nil {
+				t.Fatalf("%s failed: parsing must fail", testName+"/"+testCase.name)
+			}
+			if testCase.mustError {
+				return
+			}
 			if err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+testCase.name, err)
 			}
@@ -97,10 +145,32 @@ func TestStmtListTables_parse(t *testing.T) {
 func TestStmtAlterTable_parse(t *testing.T) {
 	testName := "TestStmtAlterTable_parse"
 	testData := []struct {
-		name     string
-		sql      string
-		expected *StmtAlterTable
+		name      string
+		sql       string
+		expected  *StmtAlterTable
+		mustError bool
 	}{
+		{
+			name:      "no_table",
+			sql:       "ALTER TABLE  WITH wcu=1 WITH rcu=3",
+			mustError: true,
+		},
+		{
+			name:      "invalid_rcu",
+			sql:       "ALTER TABLE demo WITH wcu=1 WITH rcu=-3",
+			mustError: true,
+		},
+		{
+			name:      "invalid_wcu",
+			sql:       "ALTER TABLE demo WITH wcu=-1 WITH rcu=3",
+			mustError: true,
+		},
+		{
+			name:      "invalid_table_class",
+			sql:       "ALTER TABLE demo WITH class=invalid",
+			mustError: true,
+		},
+
 		{
 			name:     "with_rcu_wcu",
 			sql:      "ALTER TABLE demo WITH wcu=1 WITH rcu=3",
@@ -115,6 +185,12 @@ func TestStmtAlterTable_parse(t *testing.T) {
 	for _, testCase := range testData {
 		t.Run(testCase.name, func(t *testing.T) {
 			stmt, err := parseQuery(nil, testCase.sql)
+			if testCase.mustError && err == nil {
+				t.Fatalf("%s failed: parsing must fail", testName+"/"+testCase.name)
+			}
+			if testCase.mustError {
+				return
+			}
 			if err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+testCase.name, err)
 			}
