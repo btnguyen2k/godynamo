@@ -3,9 +3,29 @@ package godynamo
 import (
 	"database/sql/driver"
 	"fmt"
+	"reflect"
 	"regexp"
 	"strings"
 )
+
+func goTypeToDynamodbType(typ reflect.Type) string {
+	if typ == nil {
+		return ""
+	}
+	switch typ.Kind() {
+	case reflect.Bool:
+		return "BOOLEAN"
+	case reflect.String:
+		return "STRING"
+	case reflect.Float32, reflect.Float64:
+		return "NUMBER"
+	case reflect.Array, reflect.Slice:
+		return "ARRAY"
+	case reflect.Map:
+		return "MAP"
+	}
+	return ""
+}
 
 const (
 	field       = `([\w\-]+)`
@@ -20,6 +40,10 @@ var (
 	reAlterTable    = regexp.MustCompile(`(?im)^ALTER\s+TABLE\s+` + field + with + `$`)
 	reDropTable     = regexp.MustCompile(`(?im)^(DROP|DELETE)\s+TABLE` + ifExists + `\s+` + field + `$`)
 	reDescribeTable = regexp.MustCompile(`(?im)^DESCRIBE\s+TABLE\s+` + field + `$`)
+
+	reDescribeLSI = regexp.MustCompile(`(?im)^DESCRIBE\s+LSI\s+` + field + `\sON\s+` + field + `$`)
+
+	reCreateGSI = regexp.MustCompile(`(?im)^CREATE\s+GSI` + ifNotExists + `\s+` + field + with + `$`)
 )
 
 func parseQuery(c *Conn, query string) (driver.Stmt, error) {
@@ -69,6 +93,16 @@ func parseQuery(c *Conn, query string) (driver.Stmt, error) {
 		stmt := &StmtDescribeTable{
 			Stmt:      &Stmt{query: query, conn: c, numInput: 0},
 			tableName: strings.TrimSpace(groups[0][1]),
+		}
+		return stmt, stmt.validate()
+	}
+
+	if re := reDescribeLSI; re.MatchString(query) {
+		groups := re.FindAllStringSubmatch(query, -1)
+		stmt := &StmtDescribeLSI{
+			Stmt:      &Stmt{query: query, conn: c, numInput: 0},
+			tableName: strings.TrimSpace(groups[0][2]),
+			indexName: strings.TrimSpace(groups[0][1]),
 		}
 		return stmt, stmt.validate()
 	}

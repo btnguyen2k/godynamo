@@ -51,12 +51,15 @@ func main() {
 
 ## Supported statements:
 
-- Tables:
+- Table:
   - `CREATE TABLE`
   - `LIST TABLES`
   - `ALTER TABLE`
   - `DROP TABLE`
   - `DESCRIBE TABLE`
+
+- [Index](SQL_INDEX.md):
+  - `DESCRIBE LSI`
 
 ### CREATE TABLE
 

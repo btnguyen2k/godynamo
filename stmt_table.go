@@ -589,22 +589,7 @@ func (r *RowsDescribeTable) ColumnTypeScanType(index int) reflect.Type {
 
 // ColumnTypeDatabaseTypeName implements driver.RowsColumnTypeDatabaseTypeName.ColumnTypeDatabaseTypeName
 func (r *RowsDescribeTable) ColumnTypeDatabaseTypeName(index int) string {
-	if r.columnTypeList[index] == nil {
-		return ""
-	}
-	switch r.columnTypeList[index].Kind() {
-	case reflect.Bool:
-		return "BOOLEAN"
-	case reflect.String:
-		return "STRING"
-	case reflect.Float32, reflect.Float64:
-		return "NUMBER"
-	case reflect.Array, reflect.Slice:
-		return "ARRAY"
-	case reflect.Map:
-		return "MAP"
-	}
-	return ""
+	return goTypeToDynamodbType(r.columnTypeList[index])
 }
 
 // // ColumnTypeLength implements driver.RowsColumnTypeLength.ColumnTypeLength
