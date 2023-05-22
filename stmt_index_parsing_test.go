@@ -30,6 +30,9 @@ func TestStmtDescribeLSI_parse(t *testing.T) {
 			if testCase.mustError && err == nil {
 				t.Fatalf("%s failed: parsing must fail", testName+"/"+testCase.name)
 			}
+			if testCase.mustError {
+				return
+			}
 			if err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+testCase.name, err)
 			}
