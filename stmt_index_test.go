@@ -23,30 +23,26 @@ func Test_Exec_DescribeLSI(t *testing.T) {
 func Test_Query_DescribeLSI(t *testing.T) {
 	testName := "Test_Query_DescribeLSI"
 	db := _openDb(t, testName)
+	_initTest(db)
 	defer db.Close()
 
-	defer func() {
-		db.Exec("DROP TABLE IF EXISTS session")
-	}()
-	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS session WITH PK=app:string WITH SK=user:string WITH LSI=idxtime:timestamp:number WITH LSI=idxbrowser:browser:string:* WITH LSI=idxos:os:string:os_name,os_version`)
+	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS tbltest WITH PK=app:string WITH SK=user:string WITH LSI=idxtime:timestamp:number WITH LSI=idxbrowser:browser:string:* WITH LSI=idxos:os:string:os_name,os_version`)
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/createTable", err)
 	}
 
 	testData := []struct {
-		name           string
-		sql            string
-		mustError      bool
-		numRows        int
-		indexName      string
-		projectionType string
-		nonKeyAttrs    []string
+		name      string
+		sql       string
+		mustError bool
+		numRows   int
+		lsi       lsiInfo
 	}{
 		{name: "no_table", sql: `DESCRIBE LSI idx ON tblnotexist`, mustError: true},
-		{name: "no_index", sql: `DESCRIBE LSI idxnotexists ON session`, numRows: 0},
-		{name: "proj_key_only", sql: `DESCRIBE LSI idxtime ON session`, numRows: 1, indexName: "idxtime", projectionType: "KEYS_ONLY"},
-		{name: "proj_all", sql: `DESCRIBE LSI idxbrowser ON session`, numRows: 1, indexName: "idxbrowser", projectionType: "ALL"},
-		{name: "proj_included", sql: `DESCRIBE LSI idxos ON session`, numRows: 1, indexName: "idxos", projectionType: "INCLUDE", nonKeyAttrs: []string{"os_name", "os_version"}},
+		{name: "no_index", sql: `DESCRIBE LSI idxnotexists ON tbltest`, numRows: 0},
+		{name: "proj_key_only", sql: `DESCRIBE LSI idxtime ON tbltest`, numRows: 1, lsi: lsiInfo{projType: "KEYS_ONLY", lsiDef: lsiDef{indexName: "idxtime", attrName: "timestamp"}}},
+		{name: "proj_all", sql: `DESCRIBE LSI idxbrowser ON tbltest`, numRows: 1, lsi: lsiInfo{projType: "ALL", lsiDef: lsiDef{indexName: "idxbrowser", attrName: "browser"}}},
+		{name: "proj_included", sql: `DESCRIBE LSI idxos ON tbltest`, numRows: 1, lsi: lsiInfo{projType: "INCLUDE", lsiDef: lsiDef{indexName: "idxos", attrName: "os", projectedAttrs: "os_name,os_version"}}},
 	}
 
 	for _, testCase := range testData {
@@ -76,26 +72,28 @@ func Test_Query_DescribeLSI(t *testing.T) {
 				if err != nil {
 					t.Fatalf("%s failed: cannot fetch value at key <%s> / %s", testName+"/"+testCase.name, key, err)
 				}
-				if indexName != testCase.indexName {
-					t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName+"/"+testCase.name, key, testCase.indexName, indexName)
+				if indexName != testCase.lsi.indexName {
+					t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName+"/"+testCase.name, key, testCase.lsi.indexName, indexName)
 				}
 
 				key = "Projection.ProjectionType"
-				projectionType, err := s.GetValueOfType(key, reddo.TypeString)
+				projType, err := s.GetValueOfType(key, reddo.TypeString)
 				if err != nil {
 					t.Fatalf("%s failed: cannot fetch value at key <%s> / %s", testName+"/"+testCase.name, key, err)
 				}
-				if projectionType != testCase.projectionType {
-					t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName+"/"+testCase.name, key, testCase.projectionType, projectionType)
+				if projType != testCase.lsi.projType {
+					t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName+"/"+testCase.name, key, testCase.lsi.projType, projType)
 				}
 
-				key = "Projection.NonKeyAttributes"
-				nonKeyAttrs, err := s.GetValueOfType(key, reflect.TypeOf(make([]string, 0)))
-				if err != nil {
-					t.Fatalf("%s failed: cannot fetch value at key <%s> / %s", testName+"/"+testCase.name, key, err)
-				}
-				if testCase.nonKeyAttrs != nil && !reflect.DeepEqual(nonKeyAttrs, testCase.nonKeyAttrs) {
-					t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName+"/"+testCase.name, key, testCase.nonKeyAttrs, nonKeyAttrs)
+				if projType == "INCLUDE" {
+					key = "Projection.NonKeyAttributes"
+					nonKeyAttrs, err := s.GetValueOfType(key, reflect.TypeOf(make([]string, 0)))
+					if err != nil {
+						t.Fatalf("%s failed: cannot fetch value at key <%s> / %s", testName+"/"+testCase.name, key, err)
+					}
+					if !reflect.DeepEqual(nonKeyAttrs, strings.Split(testCase.lsi.projectedAttrs, ",")) {
+						t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName+"/"+testCase.name, key, testCase.lsi.projectedAttrs, nonKeyAttrs)
+					}
 				}
 			}
 		})

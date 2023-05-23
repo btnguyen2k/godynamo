@@ -341,7 +341,7 @@ func (r *RowsListTables) ColumnTypeDatabaseTypeName(index int) string {
 //	- RCU: an integer specifying DynamoDB's read capacity.
 //	- WCU: an integer specifying DynamoDB's write capacity.
 //	- CLASS: table class, either STANDARD (default) or STANDARD_IA.
-//	- Note: if RCU and WRU are both 0, table will be created with PAY_PER_REQUEST billing mode; otherwise table will be creatd with PROVISIONED mode.
+//	- Note: if RCU and WRU are both 0, table's billing mode will be updated to PAY_PER_REQUEST; otherwise billing mode will be updated to PROVISIONED.
 //	- Note: there must be at least one space before the WITH keyword.
 type StmtAlterTable struct {
 	*Stmt

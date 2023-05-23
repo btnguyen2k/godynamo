@@ -27,6 +27,8 @@ type tableInfo struct {
 }
 
 func _initTest(db *sql.DB) {
+	db.Exec(`DROP TABLE IF EXISTS tblnotexist`)
+	db.Exec(`DROP TABLE IF EXISTS tblnotexists`)
 	db.Exec(`DROP TABLE IF EXISTS tbltest`)
 	for i := 0; i < 10; i++ {
 		db.Exec(`DROP TABLE IF EXISTS tbltest` + strconv.Itoa(i))
