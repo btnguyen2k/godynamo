@@ -177,3 +177,63 @@ func TestStmtDescribeGSI_parse(t *testing.T) {
 		})
 	}
 }
+
+func TestStmtAlterGSI_parse(t *testing.T) {
+	testName := "TestStmtAlterGSI_parse"
+	testData := []struct {
+		name      string
+		sql       string
+		expected  *StmtAlterGSI
+		mustError bool
+	}{
+		{
+			name:      "no_table",
+			sql:       "ALTER GSI abc ON  WITH wcu=1 WITH rcu=2",
+			mustError: true,
+		},
+		{
+			name:      "no_index_name",
+			sql:       "ALTER GSI  ON table WITH wcu=1 WITH rcu=2",
+			mustError: true,
+		},
+		{
+			name:      "invalid_rcu",
+			sql:       "ALTER GSI index ON table WITH RCU=-1",
+			mustError: true,
+		},
+		{
+			name:      "invalid_wcu",
+			sql:       "ALTER GSI index ON table WITH wcu=-1",
+			mustError: true,
+		},
+
+		{
+			name:     "basic",
+			sql:      "ALTER GSI index ON table WITH wcu=1 WITH rcu=2",
+			expected: &StmtAlterGSI{tableName: "table", indexName: "index", wcu: aws.Int64(1), rcu: aws.Int64(2)},
+		},
+	}
+	for _, testCase := range testData {
+		t.Run(testCase.name, func(t *testing.T) {
+			s, err := parseQuery(nil, testCase.sql)
+			if testCase.mustError && err == nil {
+				t.Fatalf("%s failed: parsing must fail", testName+"/"+testCase.name)
+			}
+			if testCase.mustError {
+				return
+			}
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name, err)
+			}
+			stmt, ok := s.(*StmtAlterGSI)
+			if !ok {
+				t.Fatalf("%s failed: expected StmtAlterGSI but received %T", testName+"/"+testCase.name, s)
+			}
+			stmt.Stmt = nil
+			stmt.withOptsStr = ""
+			if !reflect.DeepEqual(stmt, testCase.expected) {
+				t.Fatalf("%s failed:\nexpected %#v\nreceived %#v", testName+"/"+testCase.name, testCase.expected, stmt)
+			}
+		})
+	}
+}

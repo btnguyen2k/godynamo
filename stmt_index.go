@@ -134,7 +134,8 @@ func (s *StmtDescribeLSI) Exec(_ []driver.Value) (driver.Result, error) {
 //	  - if equal to "*", GSI will be created with projection setting ALL.
 //	  - if supplied with comma-separated attribute list, for example "attr1,attr2,attr3", GSI will be created with projection setting INCLUDE.
 //	- If "IF NOT EXISTS" is specified, Exec will silently swallow the error "Attempting to create an index which already exists".
-//	- Note: if RCU and WRU are both 0 or not specified, GSI will be created with PAY_PER_REQUEST billing mode; otherwise table will be creatd with PROVISIONED mode.
+//	- Note: The provisioned throughput settings of a GSI are separate from those of its base table.
+//	- Note: GSI inherit the RCU and WCU mode from the base table. That means if the base table is in on-demand mode, then DynamoDB also creates the GSI in on-demand mode.
 //	- Note: there must be at least one space before the WITH keyword.
 type StmtCreateGSI struct {
 	*Stmt
@@ -341,4 +342,104 @@ func (s *StmtDescribeGSI) Query(_ []driver.Value) (driver.Rows, error) {
 // This function is not implemented, use Query instead.
 func (s *StmtDescribeGSI) Exec(_ []driver.Value) (driver.Result, error) {
 	return nil, errors.New("this operation is not supported, please use Query")
+}
+
+/*----------------------------------------------------------------------*/
+
+// StmtAlterGSI implements "ALTER GSI" operation.
+//
+// Syntax:
+//
+//		ALTER GSI <index-name> ON <table-name>
+//		WITH wcu=<number>[,] WITH rcu=<number>
+//
+//	- RCU: an integer specifying DynamoDB's read capacity.
+//	- WCU: an integer specifying DynamoDB's write capacity.
+//	- Note: The provisioned throughput settings of a GSI are separate from those of its base table.
+//	- Note: GSI inherit the RCU and WCU mode from the base table. That means if the base table is in on-demand mode, then DynamoDB also creates the GSI in on-demand mode.
+//	- Note: there must be at least one space before the WITH keyword.
+type StmtAlterGSI struct {
+	*Stmt
+	indexName, tableName string
+	rcu, wcu             *int64
+	withOptsStr          string
+}
+
+func (s *StmtAlterGSI) parse() error {
+	if err := s.Stmt.parseWithOpts(s.withOptsStr); err != nil {
+		return err
+	}
+
+	// RCU
+	if _, ok := s.withOpts["RCU"]; ok {
+		rcu, err := strconv.ParseInt(s.withOpts["RCU"].FirstString(), 10, 64)
+		if err != nil || rcu < 0 {
+			return fmt.Errorf("invalid RCU value: %s", s.withOpts["RCU"])
+		}
+		s.rcu = &rcu
+	}
+	// WCU
+	if _, ok := s.withOpts["WCU"]; ok {
+		wcu, err := strconv.ParseInt(s.withOpts["WCU"].FirstString(), 10, 64)
+		if err != nil || wcu < 0 {
+			return fmt.Errorf("invalid WCU value: %s", s.withOpts["WCU"])
+		}
+		s.wcu = &wcu
+	}
+
+	return nil
+}
+
+func (s *StmtAlterGSI) validate() error {
+	if s.tableName == "" {
+		return errors.New("table name is missing")
+	}
+	if s.indexName == "" {
+		return errors.New("index name is missing")
+	}
+	return nil
+}
+
+// Query implements driver.Stmt.Query.
+// This function is not implemented, use Exec instead.
+func (s *StmtAlterGSI) Query(_ []driver.Value) (driver.Rows, error) {
+	return nil, errors.New("this operation is not supported, please use Exec")
+}
+
+// Exec implements driver.Stmt.Exec.
+func (s *StmtAlterGSI) Exec(_ []driver.Value) (driver.Result, error) {
+	gsiInput := &types.UpdateGlobalSecondaryIndexAction{
+		IndexName: &s.indexName,
+		ProvisionedThroughput: &types.ProvisionedThroughput{
+			ReadCapacityUnits:  s.rcu,
+			WriteCapacityUnits: s.wcu,
+		},
+	}
+	input := &dynamodb.UpdateTableInput{
+		TableName:                   &s.tableName,
+		GlobalSecondaryIndexUpdates: []types.GlobalSecondaryIndexUpdate{{Update: gsiInput}},
+	}
+
+	_, err := s.conn.client.UpdateTable(context.Background(), input)
+	result := &ResultAlterGSI{Successful: err == nil}
+	return result, err
+}
+
+// ResultAlterGSI captures the result from ALTER GSI operation.
+type ResultAlterGSI struct {
+	// Successful flags if the operation was successful or not.
+	Successful bool
+}
+
+// LastInsertId implements driver.Result.LastInsertId.
+func (r *ResultAlterGSI) LastInsertId() (int64, error) {
+	return 0, fmt.Errorf("this operation is not supported.")
+}
+
+// RowsAffected implements driver.Result.RowsAffected.
+func (r *ResultAlterGSI) RowsAffected() (int64, error) {
+	if r.Successful {
+		return 1, nil
+	}
+	return 0, nil
 }

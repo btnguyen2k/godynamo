@@ -62,6 +62,7 @@ func main() {
   - `DESCRIBE LSI`
   - `CREATE GSI`
   - `DESCRIBE GSI`
+  - `ALTER GSI`
 
 ## License
 

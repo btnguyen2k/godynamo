@@ -37,13 +37,14 @@ const (
 var (
 	reCreateTable   = regexp.MustCompile(`(?im)^CREATE\s+TABLE` + ifNotExists + `\s+` + field + with + `$`)
 	reListTables    = regexp.MustCompile(`(?im)^LIST\s+TABLES?$`)
+	reDescribeTable = regexp.MustCompile(`(?im)^DESCRIBE\s+TABLE\s+` + field + `$`)
 	reAlterTable    = regexp.MustCompile(`(?im)^ALTER\s+TABLE\s+` + field + with + `$`)
 	reDropTable     = regexp.MustCompile(`(?im)^(DROP|DELETE)\s+TABLE` + ifExists + `\s+` + field + `$`)
-	reDescribeTable = regexp.MustCompile(`(?im)^DESCRIBE\s+TABLE\s+` + field + `$`)
 
 	reDescribeLSI = regexp.MustCompile(`(?im)^DESCRIBE\s+LSI\s+` + field + `\s+ON\s+` + field + `$`)
 	reCreateGSI   = regexp.MustCompile(`(?im)^CREATE\s+GSI` + ifNotExists + `\s+` + field + `\s+ON\s+` + field + with + `$`)
 	reDescribeGSI = regexp.MustCompile(`(?im)^DESCRIBE\s+GSI\s+` + field + `\s+ON\s+` + field + `$`)
+	reAlterGSI    = regexp.MustCompile(`(?im)^ALTER\s+GSI\s+` + field + `\s+ON\s+` + field + with + `$`)
 )
 
 func parseQuery(c *Conn, query string) (driver.Stmt, error) {
@@ -67,6 +68,14 @@ func parseQuery(c *Conn, query string) (driver.Stmt, error) {
 		}
 		return stmt, stmt.validate()
 	}
+	if re := reDescribeTable; re.MatchString(query) {
+		groups := re.FindAllStringSubmatch(query, -1)
+		stmt := &StmtDescribeTable{
+			Stmt:      &Stmt{query: query, conn: c, numInput: 0},
+			tableName: strings.TrimSpace(groups[0][1]),
+		}
+		return stmt, stmt.validate()
+	}
 	if re := reAlterTable; re.MatchString(query) {
 		groups := re.FindAllStringSubmatch(query, -1)
 		stmt := &StmtAlterTable{
@@ -85,14 +94,6 @@ func parseQuery(c *Conn, query string) (driver.Stmt, error) {
 			Stmt:      &Stmt{query: query, conn: c, numInput: 0},
 			tableName: strings.TrimSpace(groups[0][3]),
 			ifExists:  strings.TrimSpace(groups[0][2]) != "",
-		}
-		return stmt, stmt.validate()
-	}
-	if re := reDescribeTable; re.MatchString(query) {
-		groups := re.FindAllStringSubmatch(query, -1)
-		stmt := &StmtDescribeTable{
-			Stmt:      &Stmt{query: query, conn: c, numInput: 0},
-			tableName: strings.TrimSpace(groups[0][1]),
 		}
 		return stmt, stmt.validate()
 	}
@@ -127,6 +128,19 @@ func parseQuery(c *Conn, query string) (driver.Stmt, error) {
 			Stmt:      &Stmt{query: query, conn: c, numInput: 0},
 			tableName: strings.TrimSpace(groups[0][2]),
 			indexName: strings.TrimSpace(groups[0][1]),
+		}
+		return stmt, stmt.validate()
+	}
+	if re := reAlterGSI; re.MatchString(query) {
+		groups := re.FindAllStringSubmatch(query, -1)
+		stmt := &StmtAlterGSI{
+			Stmt:        &Stmt{query: query, conn: c, numInput: 0},
+			indexName:   strings.TrimSpace(groups[0][1]),
+			tableName:   strings.TrimSpace(groups[0][2]),
+			withOptsStr: " " + strings.TrimSpace(groups[0][3]),
+		}
+		if err := stmt.parse(); err != nil {
+			return nil, err
 		}
 		return stmt, stmt.validate()
 	}

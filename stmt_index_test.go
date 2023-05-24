@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/btnguyen2k/consu/reddo"
 	"github.com/btnguyen2k/consu/semita"
@@ -140,6 +141,67 @@ func Test_Exec_CreateGSI(t *testing.T) {
 			execResult, err := db.Exec(testCase.sql)
 			if err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/create_gsi", err)
+			}
+			affectedRows, err := execResult.RowsAffected()
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/rows_affected", err)
+			}
+			if affectedRows != testCase.affectedRows {
+				t.Fatalf("%s failed: expected %#v affected-rows but received %#v", testName+"/"+testCase.name, testCase.affectedRows, affectedRows)
+			}
+
+			if testCase.gsiInfo == nil {
+				return
+			}
+			dbresult, err := db.Query(`DESCRIBE GSI ` + testCase.gsiInfo.indexName + ` ON tbltest`)
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/describe_gsi", err)
+			}
+			rows, err := _fetchAllRows(dbresult)
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/fetch_rows", err)
+			}
+			_verifyGSIInfo(t, testName+"/"+testCase.name, rows[0], testCase.gsiInfo)
+		})
+	}
+}
+
+func Test_Query_AlterGSI(t *testing.T) {
+	testName := "Test_Query_AlterGSI"
+	db := _openDb(t, testName)
+	defer db.Close()
+
+	_, err := db.Query("ALTER GSI idx ON tbltemp WITH wcu=1 WITH rcu=2")
+	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
+		t.Fatalf("%s failed: expected 'not support' error, but received %#v", testName, err)
+	}
+}
+
+func Test_Exec_AlterGSI(t *testing.T) {
+	testName := "Test_Exec_AlterGSI"
+	db := _openDb(t, testName)
+	defer db.Close()
+	_initTest(db)
+
+	db.Exec(`CREATE TABLE tbltest WITH pk=id:string WITH rcu=1 WITH wcu=1`)
+	db.Exec(`CREATE GSI idxtest ON tbltest WITH pk=grade:number WITH rcu=3 WITH wcu=4`)
+	time.Sleep(5 * time.Second)
+
+	testData := []struct {
+		name         string
+		sql          string
+		gsiInfo      *gsiInfo
+		affectedRows int64
+	}{
+		{name: "basic", sql: `ALTER GSI idxtest ON tbltest WITH wcu=5 WITH rcu=6`, affectedRows: 1, gsiInfo: &gsiInfo{indexName: "idxtest",
+			wcu: 5, rcu: 6, pkAttr: "grade", pkType: "N", projectionType: "KEYS_ONLY"}},
+	}
+
+	for _, testCase := range testData {
+		t.Run(testCase.name, func(t *testing.T) {
+			execResult, err := db.Exec(testCase.sql)
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/alter_gsi", err)
 			}
 			affectedRows, err := execResult.RowsAffected()
 			if err != nil {
