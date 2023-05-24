@@ -318,3 +318,62 @@ func Test_Query_DescribeGSI(t *testing.T) {
 		})
 	}
 }
+
+func Test_Query_DropGSI(t *testing.T) {
+	testName := "Test_Query_DropGSI"
+	db := _openDb(t, testName)
+	defer db.Close()
+
+	_, err := db.Query("DROP GSI idxname ON tblname")
+	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
+		t.Fatalf("%s failed: expected 'not support' error, but received %#v", testName, err)
+	}
+}
+
+func Test_Exec_DropGSI(t *testing.T) {
+	testName := "Test_Exec_DropGSI"
+	db := _openDb(t, testName)
+	_initTest(db)
+	defer db.Close()
+
+	db.Exec(`CREATE TABLE tbltest WITH pk=id:string WITH rcu=1 WITH wcu=2`)
+	db.Exec(`CREATE GSI idxtime ON tbltest WITH pk=time:number WITH rcu=3 WITH wcu=4`)
+	db.Exec(`CREATE GSI idxbrowser ON tbltest WITH pk=os:binary WITH SK=version:string WITH rcu=5 WITH wcu=6 WITH projection=*`)
+	db.Exec(`CREATE GSI idxplatform ON tbltest WITH pk=platform:string WITH rcu=7 WITH wcu=8 WITH projection=a,b,c`)
+	time.Sleep(3 * time.Second)
+
+	testData := []struct {
+		name         string
+		sql          string
+		mustError    bool
+		affectedRows int64
+	}{
+		{name: "no_table", sql: `DROP GSI idxtime ON tblnotexist`, mustError: true},
+		{name: "no_index", sql: `DROP GSI idxnotexists ON tbltest`, mustError: true},
+		{name: "basic", sql: `DROP GSI idxtime ON tbltest`, affectedRows: 1},
+		{name: "if_exists", sql: `DROP GSI IF EXISTS idxnotexists ON tbltest`, affectedRows: 0},
+		{name: "no_table_if_exists", sql: `DROP GSI IF EXISTS idxtime ON tblnotexist`, affectedRows: 0},
+	}
+
+	for _, testCase := range testData {
+		t.Run(testCase.name, func(t *testing.T) {
+			execResult, err := db.Exec(testCase.sql)
+			if testCase.mustError && err == nil {
+				t.Fatalf("%s failed: query must fail", testName+"/"+testCase.name)
+			}
+			if testCase.mustError {
+				return
+			}
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name, err)
+			}
+			affectedRows, err := execResult.RowsAffected()
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/rows_affected", err)
+			}
+			if affectedRows != testCase.affectedRows {
+				t.Fatalf("%s failed: expected %#v affected-rows but received %#v", testName+"/"+testCase.name, testCase.affectedRows, affectedRows)
+			}
+		})
+	}
+}

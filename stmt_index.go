@@ -443,3 +443,69 @@ func (r *ResultAlterGSI) RowsAffected() (int64, error) {
 	}
 	return 0, nil
 }
+
+/*----------------------------------------------------------------------*/
+
+// StmtDropGSI implements "DROP GSI" operation.
+//
+// Syntax:
+//
+//	DROP GSI [IF EXISTS] <index-name> ON <table-name>
+//
+// If "IF EXISTS" is specified, Exec will silently swallow the error "ResourceNotFoundException".
+type StmtDropGSI struct {
+	*Stmt
+	tableName string
+	indexName string
+	ifExists  bool
+}
+
+func (s *StmtDropGSI) validate() error {
+	if s.tableName == "" {
+		return errors.New("table name is missing")
+	}
+	if s.indexName == "" {
+		return errors.New("index name is missing")
+	}
+	return nil
+}
+
+// Query implements driver.Stmt.Query.
+// This function is not implemented, use Exec instead.
+func (s *StmtDropGSI) Query(_ []driver.Value) (driver.Rows, error) {
+	return nil, errors.New("this operation is not supported, please use Exec")
+}
+
+// Exec implements driver.Stmt.Exec.
+func (s *StmtDropGSI) Exec(_ []driver.Value) (driver.Result, error) {
+	gsiInput := &types.DeleteGlobalSecondaryIndexAction{IndexName: &s.indexName}
+	input := &dynamodb.UpdateTableInput{
+		TableName:                   &s.tableName,
+		GlobalSecondaryIndexUpdates: []types.GlobalSecondaryIndexUpdate{types.GlobalSecondaryIndexUpdate{Delete: gsiInput}},
+	}
+	_, err := s.conn.client.UpdateTable(context.Background(), input)
+	result := &ResultDropGSI{Successful: err == nil}
+	if s.ifExists && IsAwsError(err, "ResourceNotFoundException") {
+		err = nil
+	}
+	return result, err
+}
+
+// ResultDropTable captures the result from DROP GSI operation.
+type ResultDropGSI struct {
+	// Successful flags if the operation was successful or not.
+	Successful bool
+}
+
+// LastInsertId implements driver.Result.LastInsertId.
+func (r *ResultDropGSI) LastInsertId() (int64, error) {
+	return 0, fmt.Errorf("this operation is not supported.")
+}
+
+// RowsAffected implements driver.Result.RowsAffected.
+func (r *ResultDropGSI) RowsAffected() (int64, error) {
+	if r.Successful {
+		return 1, nil
+	}
+	return 0, nil
+}

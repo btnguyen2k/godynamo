@@ -4,6 +4,7 @@
 - `CREATE LSI`
 - `DESCRIBE GSI`
 - `ALTER GSI`
+- `DROP GSI`
 
 ## DESCRIBE LSI
 
@@ -113,3 +114,28 @@ Description: update WRU/RCU of a Global Secondary Index on an existing DynamoDB 
 - Note: The provisioned throughput settings of a GSI are separate from those of its base table.
 - Note: GSI inherit the RCU and WCU mode from the base table. That means if the base table is in on-demand mode, then DynamoDB also creates the GSI in on-demand mode. 
 - Note: there must be at least one space before the WITH keyword.
+
+## DROP GSI
+
+Syntax:
+```sql
+DROP GSI [IF EXIST] <index-name> ON <table-name>
+```
+
+Alias: `DELETE GSI`
+
+Example:
+```go
+result, err := db.Exec(`DROP GSI IF EXISTS index ON table`)
+if err == nil {
+	numAffectedRow, err := result.RowsAffected()
+	...
+}
+```
+
+Description: delete an existing GSI from a DynamoDB table.
+
+- If the statement is executed successfully, `RowsAffected()` returns `1, nil`.
+- If the specified table does not exist:
+  - If `IF EXISTS` is supplied: `RowsAffected()` returns `0, nil`
+  - If `IF EXISTS` is _not_ supplied: `RowsAffected()` returns `_, error`

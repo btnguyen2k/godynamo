@@ -237,3 +237,39 @@ func TestStmtAlterGSI_parse(t *testing.T) {
 		})
 	}
 }
+
+func TestStmtDropGSI_parse(t *testing.T) {
+	testName := "TestStmtDropGSI_parse"
+	testData := []struct {
+		name     string
+		sql      string
+		expected *StmtDropGSI
+	}{
+		{
+			name:     "basic",
+			sql:      "DROP GSI index ON table",
+			expected: &StmtDropGSI{tableName: "table", indexName: "index"},
+		},
+		{
+			name:     "if_exists",
+			sql:      "DROP GSI IF EXISTS index ON table",
+			expected: &StmtDropGSI{tableName: "table", indexName: "index", ifExists: true},
+		},
+	}
+	for _, testCase := range testData {
+		t.Run(testCase.name, func(t *testing.T) {
+			s, err := parseQuery(nil, testCase.sql)
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name, err)
+			}
+			stmt, ok := s.(*StmtDropGSI)
+			if !ok {
+				t.Fatalf("%s failed: expected StmtDropGSI but received %T", testName+"/"+testCase.name, s)
+			}
+			stmt.Stmt = nil
+			if !reflect.DeepEqual(stmt, testCase.expected) {
+				t.Fatalf("%s failed:\nexpected %#v\nreceived %#v", testName+"/"+testCase.name, testCase.expected, stmt)
+			}
+		})
+	}
+}

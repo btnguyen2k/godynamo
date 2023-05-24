@@ -45,6 +45,7 @@ var (
 	reCreateGSI   = regexp.MustCompile(`(?im)^CREATE\s+GSI` + ifNotExists + `\s+` + field + `\s+ON\s+` + field + with + `$`)
 	reDescribeGSI = regexp.MustCompile(`(?im)^DESCRIBE\s+GSI\s+` + field + `\s+ON\s+` + field + `$`)
 	reAlterGSI    = regexp.MustCompile(`(?im)^ALTER\s+GSI\s+` + field + `\s+ON\s+` + field + with + `$`)
+	reDropGSI     = regexp.MustCompile(`(?im)^(DROP|DELETE)\s+GSI` + ifExists + `\s+` + field + `\s+ON\s+` + field + `$`)
 )
 
 func parseQuery(c *Conn, query string) (driver.Stmt, error) {
@@ -141,6 +142,16 @@ func parseQuery(c *Conn, query string) (driver.Stmt, error) {
 		}
 		if err := stmt.parse(); err != nil {
 			return nil, err
+		}
+		return stmt, stmt.validate()
+	}
+	if re := reDropGSI; re.MatchString(query) {
+		groups := re.FindAllStringSubmatch(query, -1)
+		stmt := &StmtDropGSI{
+			Stmt:      &Stmt{query: query, conn: c, numInput: 0},
+			tableName: strings.TrimSpace(groups[0][4]),
+			indexName: strings.TrimSpace(groups[0][3]),
+			ifExists:  strings.TrimSpace(groups[0][2]) != "",
 		}
 		return stmt, stmt.validate()
 	}
