@@ -185,7 +185,7 @@ func Test_Exec_AlterGSI(t *testing.T) {
 
 	db.Exec(`CREATE TABLE tbltest WITH pk=id:string WITH rcu=1 WITH wcu=1`)
 	db.Exec(`CREATE GSI idxtest ON tbltest WITH pk=grade:number WITH rcu=3 WITH wcu=4`)
-	time.Sleep(5 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	testData := []struct {
 		name         string
@@ -223,6 +223,98 @@ func Test_Exec_AlterGSI(t *testing.T) {
 				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/fetch_rows", err)
 			}
 			_verifyGSIInfo(t, testName+"/"+testCase.name, rows[0], testCase.gsiInfo)
+		})
+	}
+}
+
+func Test_Exec_DescribeGSI(t *testing.T) {
+	testName := "Test_Exec_DescribeGSI"
+	db := _openDb(t, testName)
+	defer db.Close()
+
+	_, err := db.Exec("DESCRIBE GSI idxname ON tblname")
+	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
+		t.Fatalf("%s failed: expected 'not support' error, but received %#v", testName, err)
+	}
+}
+
+func Test_Query_DescribeGSI(t *testing.T) {
+	testName := "Test_Query_DescribeGSI"
+	db := _openDb(t, testName)
+	_initTest(db)
+	defer db.Close()
+
+	db.Exec(`CREATE TABLE tbltest WITH pk=id:string WITH rcu=1 WITH wcu=2`)
+	db.Exec(`CREATE GSI idxtime ON tbltest WITH pk=time:number WITH rcu=3 WITH wcu=4`)
+	db.Exec(`CREATE GSI idxbrowser ON tbltest WITH pk=os:binary WITH SK=version:string WITH rcu=5 WITH wcu=6 WITH projection=*`)
+	db.Exec(`CREATE GSI idxplatform ON tbltest WITH pk=platform:string WITH rcu=7 WITH wcu=8 WITH projection=a,b,c`)
+	time.Sleep(3 * time.Second)
+
+	testData := []struct {
+		name      string
+		sql       string
+		mustError bool
+		numRows   int
+		gsi       gsiInfo
+	}{
+		{name: "no_table", sql: `DESCRIBE GSI idxtest ON tblnotexist`, mustError: true},
+		{name: "no_index", sql: `DESCRIBE GSI idxnotexists ON tbltest`, numRows: 0},
+		{name: "proj_key_only", sql: `DESCRIBE GSI idxtime ON tbltest`, numRows: 1, gsi: gsiInfo{indexName: "idxtime", rcu: 3, wcu: 4, pkAttr: "time", pkType: "N", projectionType: "KEYS_ONLY"}},
+		{name: "proj_all", sql: `DESCRIBE GSI idxbrowser ON tbltest`, numRows: 1, gsi: gsiInfo{indexName: "idxbrowser", rcu: 5, wcu: 6, pkAttr: "os", pkType: "B", skAttr: "version", skType: "S", projectionType: "ALL"}},
+		{name: "proj_include", sql: `DESCRIBE GSI idxplatform ON tbltest`, numRows: 1, gsi: gsiInfo{indexName: "idxplatform", rcu: 7, wcu: 8, pkAttr: "platform", pkType: "S", projectionType: "INCLUDE", projectedAttrs: "a,b,c"}},
+	}
+
+	for _, testCase := range testData {
+		t.Run(testCase.name, func(t *testing.T) {
+			dbresult, err := db.Query(testCase.sql)
+			if testCase.mustError && err == nil {
+				t.Fatalf("%s failed: query must fail", testName+"/"+testCase.name)
+			}
+			if testCase.mustError {
+				return
+			}
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name, err)
+			}
+			rows, err := _fetchAllRows(dbresult)
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name, err)
+			}
+			if len(rows) != testCase.numRows {
+				t.Fatalf("%s failed: expected %d row(s) but recelved %d", testName+"/"+testCase.name, testCase.numRows, len(rows))
+			}
+			if testCase.numRows > 0 {
+				s := semita.NewSemita(rows[0])
+
+				key := "IndexName"
+				indexName, err := s.GetValueOfType(key, reddo.TypeString)
+				if err != nil {
+					t.Fatalf("%s failed: cannot fetch value at key <%s> / %s", testName+"/"+testCase.name, key, err)
+				}
+				if indexName != testCase.gsi.indexName {
+					t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName+"/"+testCase.name, key, testCase.gsi.indexName, indexName)
+				}
+
+				key = "Projection.ProjectionType"
+				projectionType, err := s.GetValueOfType(key, reddo.TypeString)
+				if err != nil {
+					t.Fatalf("%s failed: cannot fetch value at key <%s> / %s", testName+"/"+testCase.name, key, err)
+				}
+				if projectionType != testCase.gsi.projectionType {
+					t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName+"/"+testCase.name, key, testCase.gsi.projectionType, projectionType)
+				}
+
+				if projectionType == "INCLUDE" {
+					key = "Projection.NonKeyAttributes"
+					nonKeyAttrs, err := s.GetValueOfType(key, reflect.TypeOf(make([]string, 0)))
+					if err != nil {
+						t.Fatalf("%s failed: cannot fetch value at key <%s> / %s", testName+"/"+testCase.name, key, err)
+					}
+					if !reflect.DeepEqual(nonKeyAttrs, strings.Split(testCase.gsi.projectedAttrs, ",")) {
+						t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName+"/"+testCase.name, key, testCase.gsi.projectedAttrs, nonKeyAttrs)
+					}
+				}
+			}
 		})
 	}
 }
