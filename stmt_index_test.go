@@ -99,3 +99,68 @@ func Test_Query_DescribeLSI(t *testing.T) {
 		})
 	}
 }
+
+func Test_Query_CreateGSI(t *testing.T) {
+	testName := "Test_Query_CreateGSI"
+	db := _openDb(t, testName)
+	defer db.Close()
+
+	_, err := db.Query("CREATE GSI idx ON tbltemp WITH pk=id:string")
+	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
+		t.Fatalf("%s failed: expected 'not support' error, but received %#v", testName, err)
+	}
+}
+
+func Test_Exec_CreateGSI(t *testing.T) {
+	testName := "Test_Exec_CreateGSI"
+	db := _openDb(t, testName)
+	defer db.Close()
+	_initTest(db)
+
+	db.Exec(`CREATE TABLE tbltest WITH pk=id:string WITH rcu=1 WITH wcu=1`)
+
+	testData := []struct {
+		name         string
+		sql          string
+		gsiInfo      *gsiInfo
+		affectedRows int64
+	}{
+		{name: "basic", sql: `CREATE GSI index1 ON tbltest WITH PK=grade:number WITH wcu=1 WITH rcu=2`, affectedRows: 1, gsiInfo: &gsiInfo{indexName: "index1",
+			wcu: 1, rcu: 2, pkAttr: "grade", pkType: "N", projectionType: "KEYS_ONLY"}},
+		{name: "if_not_exists", sql: `CREATE GSI IF NOT EXISTS index1 ON tbltest WITH PK=id:string WITH wcu=2 WITH rcu=3 WITH projection=*`, affectedRows: 0, gsiInfo: &gsiInfo{indexName: "index1",
+			wcu: 1, rcu: 2, pkAttr: "grade", pkType: "N", projectionType: "KEYS_ONLY"}},
+		{name: "with_sk", sql: `CREATE GSI index2 ON tbltest WITH PK=grade:number WITH SK=class:string WITH wcu=3 WITH rcu=4 WITH projection=a,b,c`, affectedRows: 1, gsiInfo: &gsiInfo{indexName: "index2",
+			wcu: 3, rcu: 4, pkAttr: "grade", pkType: "N", skAttr: "class", skType: "S", projectionType: "INCLUDE", projectedAttrs: "a,b,c"}},
+		{name: "with_projection_all", sql: `CREATE GSI index3 ON tbltest WITH PK=grade:number WITH wcu=5 WITH rcu=6 WITH projection=*`, affectedRows: 1, gsiInfo: &gsiInfo{indexName: "index3",
+			wcu: 5, rcu: 6, pkAttr: "grade", pkType: "N", projectionType: "ALL"}},
+	}
+
+	for _, testCase := range testData {
+		t.Run(testCase.name, func(t *testing.T) {
+			execResult, err := db.Exec(testCase.sql)
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/create_gsi", err)
+			}
+			affectedRows, err := execResult.RowsAffected()
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/rows_affected", err)
+			}
+			if affectedRows != testCase.affectedRows {
+				t.Fatalf("%s failed: expected %#v affected-rows but received %#v", testName+"/"+testCase.name, testCase.affectedRows, affectedRows)
+			}
+
+			if testCase.gsiInfo == nil {
+				return
+			}
+			dbresult, err := db.Query(`DESCRIBE GSI ` + testCase.gsiInfo.indexName + ` ON tbltest`)
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/describe_gsi", err)
+			}
+			rows, err := _fetchAllRows(dbresult)
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/fetch_rows", err)
+			}
+			_verifyGSIInfo(t, testName+"/"+testCase.name, rows[0], testCase.gsiInfo)
+		})
+	}
+}

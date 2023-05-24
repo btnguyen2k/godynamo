@@ -60,6 +60,8 @@ func main() {
 
 - [Index](SQL_INDEX.md):
   - `DESCRIBE LSI`
+  - `CREATE GSI`
+  - `DESCRIBE GSI`
 
 ## License
 

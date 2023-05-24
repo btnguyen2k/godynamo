@@ -67,7 +67,7 @@ if err == nil {
 Description: return list of all DynamoDB tables.
 
 Sample result:
-|$1|
+|$1 <-- this is the column name|
 |--------|
 |tbltest0|
 |tbltest1|

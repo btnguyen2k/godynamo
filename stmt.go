@@ -41,9 +41,9 @@ var (
 	reDropTable     = regexp.MustCompile(`(?im)^(DROP|DELETE)\s+TABLE` + ifExists + `\s+` + field + `$`)
 	reDescribeTable = regexp.MustCompile(`(?im)^DESCRIBE\s+TABLE\s+` + field + `$`)
 
-	reDescribeLSI = regexp.MustCompile(`(?im)^DESCRIBE\s+LSI\s+` + field + `\sON\s+` + field + `$`)
-
-	reCreateGSI = regexp.MustCompile(`(?im)^CREATE\s+GSI` + ifNotExists + `\s+` + field + with + `$`)
+	reDescribeLSI = regexp.MustCompile(`(?im)^DESCRIBE\s+LSI\s+` + field + `\s+ON\s+` + field + `$`)
+	reCreateGSI   = regexp.MustCompile(`(?im)^CREATE\s+GSI` + ifNotExists + `\s+` + field + `\s+ON\s+` + field + with + `$`)
+	reDescribeGSI = regexp.MustCompile(`(?im)^DESCRIBE\s+GSI\s+` + field + `\s+ON\s+` + field + `$`)
 )
 
 func parseQuery(c *Conn, query string) (driver.Stmt, error) {
@@ -100,6 +100,30 @@ func parseQuery(c *Conn, query string) (driver.Stmt, error) {
 	if re := reDescribeLSI; re.MatchString(query) {
 		groups := re.FindAllStringSubmatch(query, -1)
 		stmt := &StmtDescribeLSI{
+			Stmt:      &Stmt{query: query, conn: c, numInput: 0},
+			tableName: strings.TrimSpace(groups[0][2]),
+			indexName: strings.TrimSpace(groups[0][1]),
+		}
+		return stmt, stmt.validate()
+	}
+
+	if re := reCreateGSI; re.MatchString(query) {
+		groups := re.FindAllStringSubmatch(query, -1)
+		stmt := &StmtCreateGSI{
+			Stmt:        &Stmt{query: query, conn: c, numInput: 0},
+			ifNotExists: strings.TrimSpace(groups[0][1]) != "",
+			indexName:   strings.TrimSpace(groups[0][2]),
+			tableName:   strings.TrimSpace(groups[0][3]),
+			withOptsStr: " " + strings.TrimSpace(groups[0][4]),
+		}
+		if err := stmt.parse(); err != nil {
+			return nil, err
+		}
+		return stmt, stmt.validate()
+	}
+	if re := reDescribeGSI; re.MatchString(query) {
+		groups := re.FindAllStringSubmatch(query, -1)
+		stmt := &StmtDescribeGSI{
 			Stmt:      &Stmt{query: query, conn: c, numInput: 0},
 			tableName: strings.TrimSpace(groups[0][2]),
 			indexName: strings.TrimSpace(groups[0][1]),

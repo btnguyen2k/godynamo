@@ -24,19 +24,20 @@ func Test_Exec_CreateTable(t *testing.T) {
 	_initTest(db)
 
 	testData := []struct {
-		name      string
-		sql       string
-		tableInfo *tableInfo
+		name         string
+		sql          string
+		tableInfo    *tableInfo
+		affectedRows int64
 	}{
-		{name: "basic", sql: `CREATE TABLE tbltest1 WITH PK=id:string`, tableInfo: &tableInfo{tableName: "tbltest1",
+		{name: "basic", sql: `CREATE TABLE tbltest1 WITH PK=id:string`, affectedRows: 1, tableInfo: &tableInfo{tableName: "tbltest1",
 			billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "S"}},
-		{name: "if_not_exists", sql: `CREATE TABLE IF NOT EXISTS tbltest1 WITH PK=id:NUMBER`, tableInfo: &tableInfo{tableName: "tbltest1",
+		{name: "if_not_exists", sql: `CREATE TABLE IF NOT EXISTS tbltest1 WITH PK=id:NUMBER`, affectedRows: 0, tableInfo: &tableInfo{tableName: "tbltest1",
 			billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "S"}},
-		{name: "with_sk", sql: `CREATE TABLE tbltest2 WITH PK=id:binary WITH sk=grade:number, WITH class=standard`, tableInfo: &tableInfo{tableName: "tbltest2",
+		{name: "with_sk", sql: `CREATE TABLE tbltest2 WITH PK=id:binary WITH sk=grade:number, WITH class=standard`, affectedRows: 1, tableInfo: &tableInfo{tableName: "tbltest2",
 			billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "B", skAttr: "grade", skType: "N"}},
-		{name: "with_rcu_wcu", sql: `CREATE TABLE tbltest3 WITH PK=id:number WITH rcu=1 WITH wcu=2 WITH class=standard_ia`, tableInfo: &tableInfo{tableName: "tbltest3",
+		{name: "with_rcu_wcu", sql: `CREATE TABLE tbltest3 WITH PK=id:number WITH rcu=1 WITH wcu=2 WITH class=standard_ia`, affectedRows: 1, tableInfo: &tableInfo{tableName: "tbltest3",
 			billingMode: "", wcu: 2, rcu: 1, pkAttr: "id", pkType: "N"}},
-		{name: "with_lsi", sql: `CREATE TABLE tbltest4 WITH PK=id:binary WITH SK=username:string WITH LSI=index1:grade:number, WITH LSI=index2:dob:string:*, WITH LSI=index3:yob:binary:a,b,c`, tableInfo: &tableInfo{tableName: "tbltest4",
+		{name: "with_lsi", sql: `CREATE TABLE tbltest4 WITH PK=id:binary WITH SK=username:string WITH LSI=index1:grade:number, WITH LSI=index2:dob:string:*, WITH LSI=index3:yob:binary:a,b,c`, affectedRows: 1, tableInfo: &tableInfo{tableName: "tbltest4",
 			billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "B", skAttr: "username", skType: "S",
 			lsi: map[string]lsiInfo{
 				"index1": {projType: "KEYS_ONLY", lsiDef: lsiDef{indexName: "index1", attrName: "grade", attrType: "N"}},
@@ -48,9 +49,16 @@ func Test_Exec_CreateTable(t *testing.T) {
 
 	for _, testCase := range testData {
 		t.Run(testCase.name, func(t *testing.T) {
-			_, err := db.Exec(testCase.sql)
+			execResult, err := db.Exec(testCase.sql)
 			if err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/create_table", err)
+			}
+			affectedRows, err := execResult.RowsAffected()
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/rows_affected", err)
+			}
+			if affectedRows != testCase.affectedRows {
+				t.Fatalf("%s failed: expected %#v affected-rows but received %#v", testName+"/"+testCase.name, testCase.affectedRows, affectedRows)
 			}
 
 			if testCase.tableInfo == nil {
@@ -129,20 +137,30 @@ func Test_Exec_AlterTable(t *testing.T) {
 
 	db.Exec(`CREATE TABLE tbltest WITH PK=id:string`)
 	testData := []struct {
-		name      string
-		sql       string
-		tableInfo *tableInfo
+		name         string
+		sql          string
+		tableInfo    *tableInfo
+		affectedRows int64
 	}{
-		{name: "change_wcu_rcu", sql: `ALTER TABLE tbltest WITH wcu=3 WITH rcu=5`, tableInfo: &tableInfo{tableName: "tbltest",
+		{name: "change_wcu_rcu_provisioned", sql: `ALTER TABLE tbltest WITH wcu=3 WITH rcu=5`, affectedRows: 1, tableInfo: &tableInfo{tableName: "tbltest",
 			billingMode: "PROVISIONED", wcu: 3, rcu: 5, pkAttr: "id", pkType: "S"}},
+		{name: "change_wcu_rcu_on_demand", sql: `ALTER TABLE tbltest WITH wcu=0 WITH rcu=0`, affectedRows: 1, tableInfo: &tableInfo{tableName: "tbltest",
+			billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "S"}},
 		// DynamoDB Docker version does not support changing table class
 	}
 
 	for _, testCase := range testData {
 		t.Run(testCase.name, func(t *testing.T) {
-			_, err := db.Exec(testCase.sql)
+			execResult, err := db.Exec(testCase.sql)
 			if err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+testCase.name, err)
+			}
+			affectedRows, err := execResult.RowsAffected()
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/rows_affected", err)
+			}
+			if affectedRows != testCase.affectedRows {
+				t.Fatalf("%s failed: expected %#v affected-rows but received %#v", testName+"/"+testCase.name, testCase.affectedRows, affectedRows)
 			}
 
 			if testCase.tableInfo == nil {
@@ -157,6 +175,50 @@ func Test_Exec_AlterTable(t *testing.T) {
 				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/fetch_rows", err)
 			}
 			_verifyTableInfo(t, testName+"/"+testCase.name, rows[0], testCase.tableInfo)
+		})
+	}
+}
+
+func Test_Query_DropTable(t *testing.T) {
+	testName := "Test_Query_DropTable"
+	db := _openDb(t, testName)
+	defer db.Close()
+
+	_, err := db.Query("DROP TABLE tbltemp")
+	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
+		t.Fatalf("%s failed: expected 'not support' error, but received %#v", testName, err)
+	}
+}
+
+func Test_Exec_DropTable(t *testing.T) {
+	testName := "Test_Exec_DropTable"
+	db := _openDb(t, testName)
+	_initTest(db)
+	defer db.Close()
+
+	db.Exec(`CREATE TABLE tbltest WITH PK=id:string`)
+	testData := []struct {
+		name         string
+		sql          string
+		affectedRows int64
+	}{
+		{name: "basic", sql: `DROP TABLE tbltest`, affectedRows: 1},
+		{name: "if_exists", sql: `DROP TABLE IF EXISTS tbltest`, affectedRows: 0},
+	}
+
+	for _, testCase := range testData {
+		t.Run(testCase.name, func(t *testing.T) {
+			execResult, err := db.Exec(testCase.sql)
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name, err)
+			}
+			affectedRows, err := execResult.RowsAffected()
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/rows_affected", err)
+			}
+			if affectedRows != testCase.affectedRows {
+				t.Fatalf("%s failed: expected %#v affected-rows but received %#v", testName+"/"+testCase.name, testCase.affectedRows, affectedRows)
+			}
 		})
 	}
 }

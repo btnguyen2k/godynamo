@@ -17,6 +17,14 @@ type lsiInfo struct {
 	projType string
 }
 
+type gsiInfo struct {
+	indexName                      string
+	rcu, wcu                       int64
+	pkAttr, pkType                 string
+	skAttr, skType                 string
+	projectionType, projectedAttrs string
+}
+
 type tableInfo struct {
 	tableName      string
 	billingMode    string
@@ -144,6 +152,56 @@ func _verifyTableInfo(t *testing.T, testName string, row map[string]interface{},
 		}
 		if !found {
 			t.Fatalf("%s failed: no LSI <%s> found", testName, expectedIdxName)
+		}
+	}
+}
+
+func _verifyGSIInfo(t *testing.T, testName string, row map[string]interface{}, gsiInfo *gsiInfo) {
+	s := semita.NewSemita(row)
+	var key string
+
+	key = "IndexName"
+	indexName, _ := s.GetValueOfType(key, reddo.TypeString)
+	if indexName != gsiInfo.indexName {
+		t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName, key, gsiInfo.indexName, indexName)
+	}
+
+	key = "ProvisionedThroughput.ReadCapacityUnits"
+	rcu, _ := s.GetValueOfType(key, reddo.TypeInt)
+	if rcu != gsiInfo.rcu {
+		t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName, key, gsiInfo.rcu, rcu)
+	}
+
+	key = "ProvisionedThroughput.WriteCapacityUnits"
+	wcu, _ := s.GetValueOfType(key, reddo.TypeInt)
+	if wcu != gsiInfo.wcu {
+		t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName, key, gsiInfo.wcu, wcu)
+	}
+
+	key = "KeySchema[0].AttributeName"
+	pkAttr, _ := s.GetValueOfType(key, reddo.TypeString)
+	if pkAttr != gsiInfo.pkAttr {
+		t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName, key, gsiInfo.pkAttr, pkAttr)
+	}
+
+	if gsiInfo.skAttr != "" {
+		key = "KeySchema[1].AttributeName"
+		skAttr, _ := s.GetValueOfType(key, reddo.TypeString)
+		if skAttr != gsiInfo.skAttr {
+			t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName, key, gsiInfo.skAttr, skAttr)
+		}
+	}
+
+	key = "Projection.ProjectionType"
+	projectionType, _ := s.GetValueOfType(key, reddo.TypeString)
+	if projectionType != gsiInfo.projectionType {
+		t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName, key, gsiInfo.projectionType, projectionType)
+	}
+	if projectionType == "INCLUDE" {
+		key = "Projection.NonKeyAttributes"
+		nonKeyAttrs, _ := s.GetValueOfType(key, reflect.TypeOf(make([]string, 0)))
+		if !reflect.DeepEqual(nonKeyAttrs, strings.Split(gsiInfo.projectedAttrs, ",")) {
+			t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName, key, gsiInfo.projectedAttrs, nonKeyAttrs)
 		}
 	}
 }
