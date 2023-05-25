@@ -222,3 +222,14 @@ func Test_Exec_DropTable(t *testing.T) {
 		})
 	}
 }
+
+func Test_Exec_DescribeTable(t *testing.T) {
+	testName := "Test_Exec_DescribeTable"
+	db := _openDb(t, testName)
+	defer db.Close()
+
+	_, err := db.Exec("DESCRIBE TABLE tbltemp")
+	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
+		t.Fatalf("%s failed: expected 'not support' error, but received %#v", testName, err)
+	}
+}
