@@ -3,29 +3,9 @@ package godynamo
 import (
 	"database/sql/driver"
 	"fmt"
-	"reflect"
 	"regexp"
 	"strings"
 )
-
-func goTypeToDynamodbType(typ reflect.Type) string {
-	if typ == nil {
-		return ""
-	}
-	switch typ.Kind() {
-	case reflect.Bool:
-		return "BOOLEAN"
-	case reflect.String:
-		return "STRING"
-	case reflect.Float32, reflect.Float64:
-		return "NUMBER"
-	case reflect.Array, reflect.Slice:
-		return "ARRAY"
-	case reflect.Map:
-		return "MAP"
-	}
-	return ""
-}
 
 const (
 	field       = `([\w\-]+)`
@@ -46,6 +26,9 @@ var (
 	reDescribeGSI = regexp.MustCompile(`(?im)^DESCRIBE\s+GSI\s+` + field + `\s+ON\s+` + field + `$`)
 	reAlterGSI    = regexp.MustCompile(`(?im)^ALTER\s+GSI\s+` + field + `\s+ON\s+` + field + with + `$`)
 	reDropGSI     = regexp.MustCompile(`(?im)^(DROP|DELETE)\s+GSI` + ifExists + `\s+` + field + `\s+ON\s+` + field + `$`)
+
+	reInsert = regexp.MustCompile(`(?im)^INSERT\s+INTO\s+`)
+	reSelect = regexp.MustCompile(`(?im)^SELECT\s+`)
 )
 
 func parseQuery(c *Conn, query string) (driver.Stmt, error) {
@@ -156,71 +139,24 @@ func parseQuery(c *Conn, query string) (driver.Stmt, error) {
 		return stmt, stmt.validate()
 	}
 
-	// if re := reInsert; re.MatchString(query) {
-	// 	groups := re.FindAllStringSubmatch(query, -1)
-	// 	stmt := &StmtInsert{
-	// 		Stmt:      &Stmt{query: query, conn: c, numInput: 0},
-	// 		isUpsert:  strings.ToUpper(strings.TrimSpace(groups[0][1])) == "UPSERT",
-	// 		dbName:    strings.TrimSpace(groups[0][3]),
-	// 		collName:  strings.TrimSpace(groups[0][4]),
-	// 		fieldsStr: strings.TrimSpace(groups[0][5]),
-	// 		valuesStr: strings.TrimSpace(groups[0][6]),
-	// 	}
-	// 	if stmt.dbName == "" {
-	// 		stmt.dbName = defaultDb
-	// 	}
-	// 	if err := stmt.parse(); err != nil {
-	// 		return nil, err
-	// 	}
-	// 	return stmt, stmt.validate()
-	// }
-	// if re := reSelect; re.MatchString(query) {
-	// 	groups := re.FindAllStringSubmatch(query, -1)
-	// 	stmt := &StmtSelect{
-	// 		Stmt:             &Stmt{query: query, conn: c, numInput: 0},
-	// 		isCrossPartition: strings.TrimSpace(groups[0][1]) != "",
-	// 		collName:         strings.TrimSpace(groups[0][2]),
-	// 		dbName:           defaultDb,
-	// 		selectQuery:      strings.ReplaceAll(strings.ReplaceAll(query, groups[0][1], ""), groups[0][3], ""),
-	// 	}
-	// 	if err := stmt.parse(groups[0][3]); err != nil {
-	// 		return nil, err
-	// 	}
-	// 	return stmt, stmt.validate()
-	// }
-	// if re := reUpdate; re.MatchString(query) {
-	// 	groups := re.FindAllStringSubmatch(query, -1)
-	// 	stmt := &StmtUpdate{
-	// 		Stmt:      &Stmt{query: query, conn: c, numInput: 0},
-	// 		dbName:    strings.TrimSpace(groups[0][2]),
-	// 		collName:  strings.TrimSpace(groups[0][3]),
-	// 		updateStr: strings.TrimSpace(groups[0][4]),
-	// 		idStr:     strings.TrimSpace(groups[0][5]),
-	// 	}
-	// 	if stmt.dbName == "" {
-	// 		stmt.dbName = defaultDb
-	// 	}
-	// 	if err := stmt.parse(); err != nil {
-	// 		return nil, err
-	// 	}
-	// 	return stmt, stmt.validate()
-	// }
-	// if re := reDelete; re.MatchString(query) {
-	// 	groups := re.FindAllStringSubmatch(query, -1)
-	// 	stmt := &StmtDelete{
-	// 		Stmt:     &Stmt{query: query, conn: c, numInput: 0},
-	// 		dbName:   strings.TrimSpace(groups[0][2]),
-	// 		collName: strings.TrimSpace(groups[0][3]),
-	// 		idStr:    strings.TrimSpace(groups[0][4]),
-	// 	}
-	// 	if stmt.dbName == "" {
-	// 		stmt.dbName = defaultDb
-	// 	}
-	// 	if err := stmt.parse(); err != nil {
-	// 		return nil, err
-	// 	}
-	// 	return stmt, stmt.validate()
-	// }
+	if re := reInsert; re.MatchString(query) {
+		stmt := &StmtInsert{
+			Stmt: &Stmt{query: query, conn: c, numInput: 0},
+		}
+		if err := stmt.parse(); err != nil {
+			return nil, err
+		}
+		return stmt, stmt.validate()
+	}
+	if re := reSelect; re.MatchString(query) {
+		stmt := &StmtSelect{
+			Stmt: &Stmt{query: query, conn: c, numInput: 0},
+		}
+		if err := stmt.parse(); err != nil {
+			return nil, err
+		}
+		return stmt, stmt.validate()
+	}
 
 	return nil, fmt.Errorf("invalid query: %s", query)
 }

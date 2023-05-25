@@ -65,6 +65,12 @@ func main() {
   - `ALTER GSI`
   - `DROP GSI`
 
+- [Document](SQL_DOCUMENT.md)
+  - `INSERT`
+  - `SELECT`
+  - `UPDATE`
+  - `DELETE`
+
 ## License
 
 MIT - See [LICENSE.md](LICENSE.md).

@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -12,44 +11,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/aws/smithy-go"
 )
 
 // init is automatically invoked when the driver is imported
 func init() {
 	sql.Register("godynamo", &Driver{})
-}
-
-var (
-	dataTypes = map[string]types.ScalarAttributeType{
-		"BINARY": "B",
-		"B":      "B",
-		"NUMBER": "N",
-		"N":      "N",
-		"STRING": "S",
-		"S":      "S",
-	}
-
-	keyTypes = map[string]types.KeyType{
-		"HASH":  "HASH",
-		"RANGE": "RANGE",
-	}
-
-	tableClasses = map[string]types.TableClass{
-		"STANDARD":    types.TableClassStandard,
-		"STANDARD_IA": types.TableClassStandardInfrequentAccess,
-	}
-)
-
-// IsAwsError returns true if err is an AWS-specific error and it matches awsErrCode.
-func IsAwsError(err error, awsErrCode string) bool {
-	if aerr, ok := err.(*smithy.OperationError); ok {
-		if herr, ok := aerr.Err.(*http.ResponseError); ok {
-			return reflect.TypeOf(herr.Err).Elem().Name() == awsErrCode
-		}
-	}
-	return false
 }
 
 // Driver is AWS DynamoDB driver for database/sql.

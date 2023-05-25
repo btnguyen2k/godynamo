@@ -24,7 +24,7 @@ type lsiDef struct {
 
 /*----------------------------------------------------------------------*/
 
-// StmtCreateTable implements "CREATE TABLE" operation.
+// StmtCreateTable implements "CREATE TABLE" statement.
 //
 // Syntax:
 //
@@ -220,7 +220,7 @@ func (s *StmtCreateTable) Exec(_ []driver.Value) (driver.Result, error) {
 	return result, err
 }
 
-// ResultCreateTable captures the result from CREATE TABLE operation.
+// ResultCreateTable captures the result from CREATE TABLE statement.
 type ResultCreateTable struct {
 	// Successful flags if the operation was successful or not.
 	Successful bool
@@ -228,7 +228,7 @@ type ResultCreateTable struct {
 
 // LastInsertId implements driver.Result.LastInsertId.
 func (r *ResultCreateTable) LastInsertId() (int64, error) {
-	return 0, fmt.Errorf("this operation is not supported.")
+	return 0, fmt.Errorf("this operation is not supported")
 }
 
 // RowsAffected implements driver.Result.RowsAffected.
@@ -241,7 +241,7 @@ func (r *ResultCreateTable) RowsAffected() (int64, error) {
 
 /*----------------------------------------------------------------------*/
 
-// StmtListTables implements "LIST TABLES" operation.
+// StmtListTables implements "LIST TABLES" statement.
 //
 // Syntax:
 //
@@ -275,7 +275,7 @@ func (s *StmtListTables) Query(_ []driver.Value) (driver.Rows, error) {
 	return rows, err
 }
 
-// RowsListTables captures the result from LIST TABLES operation.
+// RowsListTables captures the result from LIST TABLES statement.
 type RowsListTables struct {
 	count       int
 	tables      []string
@@ -304,12 +304,12 @@ func (r *RowsListTables) Next(dest []driver.Value) error {
 }
 
 // ColumnTypeScanType implements driver.RowsColumnTypeScanType.ColumnTypeScanType
-func (r *RowsListTables) ColumnTypeScanType(index int) reflect.Type {
+func (r *RowsListTables) ColumnTypeScanType(_ int) reflect.Type {
 	return reddo.TypeString
 }
 
 // ColumnTypeDatabaseTypeName implements driver.RowsColumnTypeDatabaseTypeName.ColumnTypeDatabaseTypeName
-func (r *RowsListTables) ColumnTypeDatabaseTypeName(index int) string {
+func (r *RowsListTables) ColumnTypeDatabaseTypeName(_ int) string {
 	return "STRING"
 }
 
@@ -330,7 +330,7 @@ func (r *RowsListTables) ColumnTypeDatabaseTypeName(index int) string {
 
 /*----------------------------------------------------------------------*/
 
-// StmtAlterTable implements "ALTER TABLE" operation.
+// StmtAlterTable implements "ALTER TABLE" statement.
 //
 // Syntax:
 //
@@ -422,7 +422,7 @@ func (s *StmtAlterTable) Exec(_ []driver.Value) (driver.Result, error) {
 	return result, err
 }
 
-// ResultAlterTable captures the result from CREATE TABLE operation.
+// ResultAlterTable captures the result from CREATE TABLE statement.
 type ResultAlterTable struct {
 	// Successful flags if the operation was successful or not.
 	Successful bool
@@ -430,7 +430,7 @@ type ResultAlterTable struct {
 
 // LastInsertId implements driver.Result.LastInsertId.
 func (r *ResultAlterTable) LastInsertId() (int64, error) {
-	return 0, fmt.Errorf("this operation is not supported.")
+	return 0, fmt.Errorf("this operation is not supported")
 }
 
 // RowsAffected implements driver.Result.RowsAffected.
@@ -443,7 +443,7 @@ func (r *ResultAlterTable) RowsAffected() (int64, error) {
 
 /*----------------------------------------------------------------------*/
 
-// StmtDropTable implements "DROP TABLE" operation.
+// StmtDropTable implements "DROP TABLE" statement.
 //
 // Syntax:
 //
@@ -482,7 +482,7 @@ func (s *StmtDropTable) Exec(_ []driver.Value) (driver.Result, error) {
 	return result, err
 }
 
-// ResultDropTable captures the result from DROP TABLE operation.
+// ResultDropTable captures the result from DROP TABLE statement.
 type ResultDropTable struct {
 	// Successful flags if the operation was successful or not.
 	Successful bool
@@ -490,7 +490,7 @@ type ResultDropTable struct {
 
 // LastInsertId implements driver.Result.LastInsertId.
 func (r *ResultDropTable) LastInsertId() (int64, error) {
-	return 0, fmt.Errorf("this operation is not supported.")
+	return 0, fmt.Errorf("this operation is not supported")
 }
 
 // RowsAffected implements driver.Result.RowsAffected.
@@ -551,7 +551,7 @@ func (s *StmtDescribeTable) Exec(_ []driver.Value) (driver.Result, error) {
 	return nil, errors.New("this operation is not supported, please use Query")
 }
 
-// RowsDescribeTable captures the result from DESCRIBE TABLE operation.
+// RowsDescribeTable captures the result from DESCRIBE TABLE statement.
 type RowsDescribeTable struct {
 	count          int
 	columnList     []string

@@ -16,7 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
-// RowsDescribeIndex captures the result from DESCRIBE LSI or DESCRIBE GSI operation.
+// RowsDescribeIndex captures the result from DESCRIBE LSI or DESCRIBE GSI statement.
 type RowsDescribeIndex struct {
 	count          int
 	columnList     []string
@@ -59,7 +59,7 @@ func (r *RowsDescribeIndex) ColumnTypeDatabaseTypeName(index int) string {
 
 /*----------------------------------------------------------------------*/
 
-// StmtDescribeLSI implements "DESCRIBE LSI" operation.
+// StmtDescribeLSI implements "DESCRIBE LSI" statement.
 //
 // Syntax:
 //
@@ -115,7 +115,7 @@ func (s *StmtDescribeLSI) Exec(_ []driver.Value) (driver.Result, error) {
 
 /*----------------------------------------------------------------------*/
 
-// StmtCreateGSI implements "CREATE GSI" operation.
+// StmtCreateGSI implements "CREATE GSI" statement.
 //
 // Syntax:
 //
@@ -181,7 +181,7 @@ func (s *StmtCreateGSI) parse() error {
 		s.skType = &skType
 	}
 
-	//projection
+	// projection
 	s.projectedAttrs = s.withOpts["PROJECTION"].FirstString()
 
 	// RCU
@@ -269,7 +269,7 @@ func (s *StmtCreateGSI) Exec(_ []driver.Value) (driver.Result, error) {
 	return result, err
 }
 
-// ResultCreateGSI captures the result from CREATE GSI operation.
+// ResultCreateGSI captures the result from CREATE GSI statement.
 type ResultCreateGSI struct {
 	// Successful flags if the operation was successful or not.
 	Successful bool
@@ -277,7 +277,7 @@ type ResultCreateGSI struct {
 
 // LastInsertId implements driver.Result.LastInsertId.
 func (r *ResultCreateGSI) LastInsertId() (int64, error) {
-	return 0, fmt.Errorf("this operation is not supported.")
+	return 0, fmt.Errorf("this operation is not supported")
 }
 
 // RowsAffected implements driver.Result.RowsAffected.
@@ -290,7 +290,7 @@ func (r *ResultCreateGSI) RowsAffected() (int64, error) {
 
 /*----------------------------------------------------------------------*/
 
-// StmtDescribeGSI implements "DESCRIBE GSI" operation.
+// StmtDescribeGSI implements "DESCRIBE GSI" statement.
 //
 // Syntax:
 //
@@ -346,7 +346,7 @@ func (s *StmtDescribeGSI) Exec(_ []driver.Value) (driver.Result, error) {
 
 /*----------------------------------------------------------------------*/
 
-// StmtAlterGSI implements "ALTER GSI" operation.
+// StmtAlterGSI implements "ALTER GSI" statement.
 //
 // Syntax:
 //
@@ -425,7 +425,7 @@ func (s *StmtAlterGSI) Exec(_ []driver.Value) (driver.Result, error) {
 	return result, err
 }
 
-// ResultAlterGSI captures the result from ALTER GSI operation.
+// ResultAlterGSI captures the result from ALTER GSI statement.
 type ResultAlterGSI struct {
 	// Successful flags if the operation was successful or not.
 	Successful bool
@@ -433,7 +433,7 @@ type ResultAlterGSI struct {
 
 // LastInsertId implements driver.Result.LastInsertId.
 func (r *ResultAlterGSI) LastInsertId() (int64, error) {
-	return 0, fmt.Errorf("this operation is not supported.")
+	return 0, fmt.Errorf("this operation is not supported")
 }
 
 // RowsAffected implements driver.Result.RowsAffected.
@@ -446,7 +446,7 @@ func (r *ResultAlterGSI) RowsAffected() (int64, error) {
 
 /*----------------------------------------------------------------------*/
 
-// StmtDropGSI implements "DROP GSI" operation.
+// StmtDropGSI implements "DROP GSI" statement.
 //
 // Syntax:
 //
@@ -481,7 +481,7 @@ func (s *StmtDropGSI) Exec(_ []driver.Value) (driver.Result, error) {
 	gsiInput := &types.DeleteGlobalSecondaryIndexAction{IndexName: &s.indexName}
 	input := &dynamodb.UpdateTableInput{
 		TableName:                   &s.tableName,
-		GlobalSecondaryIndexUpdates: []types.GlobalSecondaryIndexUpdate{types.GlobalSecondaryIndexUpdate{Delete: gsiInput}},
+		GlobalSecondaryIndexUpdates: []types.GlobalSecondaryIndexUpdate{{Delete: gsiInput}},
 	}
 	_, err := s.conn.client.UpdateTable(context.Background(), input)
 	result := &ResultDropGSI{Successful: err == nil}
@@ -491,7 +491,7 @@ func (s *StmtDropGSI) Exec(_ []driver.Value) (driver.Result, error) {
 	return result, err
 }
 
-// ResultDropTable captures the result from DROP GSI operation.
+// ResultDropGSI captures the result from DROP GSI statement.
 type ResultDropGSI struct {
 	// Successful flags if the operation was successful or not.
 	Successful bool
@@ -499,7 +499,7 @@ type ResultDropGSI struct {
 
 // LastInsertId implements driver.Result.LastInsertId.
 func (r *ResultDropGSI) LastInsertId() (int64, error) {
-	return 0, fmt.Errorf("this operation is not supported.")
+	return 0, fmt.Errorf("this operation is not supported")
 }
 
 // RowsAffected implements driver.Result.RowsAffected.
