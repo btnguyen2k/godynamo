@@ -29,6 +29,8 @@ var (
 
 	reInsert = regexp.MustCompile(`(?im)^INSERT\s+INTO\s+`)
 	reSelect = regexp.MustCompile(`(?im)^SELECT\s+`)
+	reUpdate = regexp.MustCompile(`(?im)^UPDATE\s+`)
+	reDelete = regexp.MustCompile(`(?im)^DELETE\s+FROM\s+`)
 )
 
 func parseQuery(c *Conn, query string) (driver.Stmt, error) {
@@ -141,7 +143,7 @@ func parseQuery(c *Conn, query string) (driver.Stmt, error) {
 
 	if re := reInsert; re.MatchString(query) {
 		stmt := &StmtInsert{
-			Stmt: &Stmt{query: query, conn: c, numInput: 0},
+			StmtExecutable: &StmtExecutable{Stmt: &Stmt{query: query, conn: c, numInput: 0}},
 		}
 		if err := stmt.parse(); err != nil {
 			return nil, err
@@ -150,7 +152,25 @@ func parseQuery(c *Conn, query string) (driver.Stmt, error) {
 	}
 	if re := reSelect; re.MatchString(query) {
 		stmt := &StmtSelect{
-			Stmt: &Stmt{query: query, conn: c, numInput: 0},
+			StmtExecutable: &StmtExecutable{Stmt: &Stmt{query: query, conn: c, numInput: 0}},
+		}
+		if err := stmt.parse(); err != nil {
+			return nil, err
+		}
+		return stmt, stmt.validate()
+	}
+	if re := reUpdate; re.MatchString(query) {
+		stmt := &StmtUpdate{
+			StmtExecutable: &StmtExecutable{Stmt: &Stmt{query: query, conn: c, numInput: 0}},
+		}
+		if err := stmt.parse(); err != nil {
+			return nil, err
+		}
+		return stmt, stmt.validate()
+	}
+	if re := reDelete; re.MatchString(query) {
+		stmt := &StmtDelete{
+			StmtExecutable: &StmtExecutable{Stmt: &Stmt{query: query, conn: c, numInput: 0}},
 		}
 		if err := stmt.parse(); err != nil {
 			return nil, err

@@ -101,3 +101,117 @@ func Test_Query_Select(t *testing.T) {
 		t.Fatalf("%s failed:\nexpected %#v\nreceived %#v", testName, expectedRow, rows)
 	}
 }
+
+func Test_Exec_Delete(t *testing.T) {
+	testName := "Test_Exec_Delete"
+	db := _openDb(t, testName)
+	defer db.Close()
+	_initTest(db)
+
+	db.Exec(`DROP TABLE IF EXISTS tbltest`)
+	db.Exec(`CREATE TABLE tbltest WITH PK=app:string WITH SK=user:string WITH rcu=100 WITH wcu=100`)
+	_, err := db.Exec(`INSERT INTO "tbltest" VALUE {'app': ?, 'user': ?, 'os': ?, 'active': ?, 'duration': ?}`, "app0", "user1", "Ubuntu", true, 12.34)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/insert", err)
+	}
+	_, err = db.Exec(`INSERT INTO "tbltest" VALUE {'app': ?, 'user': ?, 'platform': ?, 'location': ?}`, "app0", "user2", "Windows", "AU")
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/insert", err)
+	}
+
+	dbRows1, _ := db.Query(`SELECT * FROM "tbltest"`)
+	rows1, _ := _fetchAllRows(dbRows1)
+	if len(rows1) != 2 {
+		t.Fatalf("%s failed: expected 2 rows in table, but there is %#v", testName, len(rows1))
+	}
+
+	sql := `DELETE FROM "tbltest" WHERE "app"=? AND "user"=?`
+	result1, err := db.Exec(sql, "app0", "user1")
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/delete", err)
+	}
+	rowsAffected1, err := result1.RowsAffected()
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/rows_affected", err)
+	}
+	if rowsAffected1 != 1 {
+		t.Fatalf("%s failed: expected 1 row affected but received %#v", testName+"/rows_affected", rowsAffected1)
+	}
+
+	dbRows2, _ := db.Query(`SELECT * FROM "tbltest"`)
+	rows2, _ := _fetchAllRows(dbRows2)
+	if len(rows2) != 1 {
+		t.Fatalf("%s failed: expected 1 rows in table, but there is %#v", testName, len(rows1))
+	}
+
+	result0, err := db.Exec(sql, "app0", "user0")
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/delete", err)
+	}
+	rowsAffected0, err := result0.RowsAffected()
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/rows_affected", err)
+	}
+	if rowsAffected0 != 0 {
+		t.Fatalf("%s failed: expected 0 row affected but received %#v", testName+"/rows_affected", rowsAffected0)
+	}
+}
+
+func Test_Query_Delete(t *testing.T) {
+	testName := "Test_Query_Delete"
+	db := _openDb(t, testName)
+	defer db.Close()
+	_initTest(db)
+
+	db.Exec(`DROP TABLE IF EXISTS tbltest`)
+	db.Exec(`CREATE TABLE tbltest WITH PK=app:string WITH SK=user:string WITH rcu=100 WITH wcu=100`)
+	_, err := db.Exec(`INSERT INTO "tbltest" VALUE {'app': ?, 'user': ?, 'os': ?, 'active': ?, 'duration': ?}`, "app0", "user1", "Ubuntu", true, 12.34)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/insert", err)
+	}
+	_, err = db.Exec(`INSERT INTO "tbltest" VALUE {'app': ?, 'user': ?, 'platform': ?, 'location': ?}`, "app0", "user2", "Windows", "AU")
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/insert", err)
+	}
+
+	dbRows1, _ := db.Query(`SELECT * FROM "tbltest"`)
+	rows1, _ := _fetchAllRows(dbRows1)
+	if len(rows1) != 2 {
+		t.Fatalf("%s failed: expected 2 rows in table, but there is %#v", testName, len(rows1))
+	}
+
+	sql := `DELETE FROM "tbltest" WHERE "app"=? AND "user"=? RETURNING ALL OLD *`
+	result1, err := db.Query(sql, "app0", "user1")
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/delete", err)
+	}
+	rows, err := _fetchAllRows(result1)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/delete", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("%s failed: expected 1 row returned, but received %#v", testName+"/delete", len(rows))
+	}
+	expected := map[string]interface{}{"app": "app0", "user": "user1", "os": "Ubuntu", "active": true, "duration": float64(12.34)}
+	if !reflect.DeepEqual(rows[0], expected) {
+		t.Fatalf("%s failed:\nexpected     %#v\nbut received %#v", testName+"/delete", expected, rows[0])
+	}
+
+	dbRows2, _ := db.Query(`SELECT * FROM "tbltest"`)
+	rows2, _ := _fetchAllRows(dbRows2)
+	if len(rows2) != 1 {
+		t.Fatalf("%s failed: expected 1 rows in table, but there is %#v", testName, len(rows1))
+	}
+
+	result0, err := db.Query(sql, "app0", "user0")
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/delete", err)
+	}
+	rows, err = _fetchAllRows(result0)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/delete", err)
+	}
+	if len(rows) != 0 {
+		t.Fatalf("%s failed: expected 0 row returned, but received %#v", testName+"/delete", len(rows))
+	}
+}
