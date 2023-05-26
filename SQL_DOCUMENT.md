@@ -43,3 +43,32 @@ Sample result:
 |active|app|user|
 |------|---|----|
 |true|"frontend"|"user1"|
+
+## DELETE
+
+Syntax: [PartiQL delete statements for DynamoDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.delete.html)
+
+Example:
+```go
+result, err := db.Exec(`DELETE FROM "tbltest" WHERE "app"=? AND "user"=?`, "app0", "user1")
+if err == nil {
+	numAffectedRow, err := result.RowsAffected()
+	...
+}
+```
+
+`Query` can also be used to have the content of the old item returned.
+```go
+if err == nil {
+	...
+}
+```
+
+Description: use the `DELETE` statement to delete an existing item from a table.
+
+- Note: the `DELETE` must follow [PartiQL syntax](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.delete.html).
+
+Sample result:
+|app|location|platform|user|
+|---|--------|--------|----|
+|"app0"|"AU"|"Windows"|"user2"|

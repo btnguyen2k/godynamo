@@ -159,6 +159,9 @@ func (s *StmtInsert) Query(_ []driver.Value) (driver.Rows, error) {
 func (s *StmtInsert) Exec(values []driver.Value) (driver.Result, error) {
 	_, err := s.Execute(values)
 	result := &ResultNoResultSet{Successful: err == nil}
+	if err == nil {
+		result.AffectedRows = 1
+	}
 	return result, err
 }
 
