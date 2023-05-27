@@ -58,9 +58,9 @@ LIST TABLES
 
 Example:
 ```go
-result, err := db.Query(`LIST TABLES`)
+dbrows, err := db.Query(`LIST TABLES`)
 if err == nil {
-	...
+	fetchAndPrintAllRows(dbrows)
 }
 ```
 
@@ -83,9 +83,9 @@ DESCRIBE TABLE <table-name>
 
 Example:
 ```go
-result, err := db.Query(`DESCRIBE TABLE demo`)
+dbrows, err := db.Query(`DESCRIBE TABLE demo`)
 if err == nil {
-	...
+	fetchAndPrintAllRows(dbrows)
 }
 ```
 
