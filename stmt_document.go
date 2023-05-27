@@ -15,7 +15,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
-var rePlaceholder = regexp.MustCompile(`(?m)\?\s*[\,\]\}\s]`)
+var (
+	rePlaceholder = regexp.MustCompile(`(?m)\?\s*[\,\]\}\s]`)
+	reReturning   = regexp.MustCompile(`(?im)\s+RETURNING\s+((ALL\s+OLD)|(MODIFIED\s+OLD)|(ALL\s+NEW)|(MODIFIED\s+NEW))\s+\*\s*$`)
+)
 
 /*----------------------------------------------------------------------*/
 
@@ -195,30 +198,40 @@ func (s *StmtSelect) Exec(_ []driver.Value) (driver.Result, error) {
 // StmtUpdate implements "UPDATE" statement.
 //
 // Syntax: follow "PartiQL update statements for DynamoDB" https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.update.html
+//
+// Note: StmtUpdate returns the updated item by appending "RETURNING ALL OLD *" to the statement.
 type StmtUpdate struct {
 	*StmtExecutable
+}
+
+func (s *StmtUpdate) parse() error {
+	if !reReturning.MatchString(s.query) {
+		s.query += " RETURNING ALL OLD *"
+	}
+	return s.StmtExecutable.parse()
 }
 
 // Query implements driver.Stmt.Query.
 func (s *StmtUpdate) Query(values []driver.Value) (driver.Rows, error) {
 	output, err := s.Execute(values)
 	result := &ResultResultSet{dbResult: output, columnTypes: make(map[string]reflect.Type)}
-	if err == nil {
+	if err == nil || IsAwsError(err, "ConditionalCheckFailedException") {
 		result.init()
+		err = nil
 	}
 	return result, err
 }
 
 // Exec implements driver.Stmt.Exec.
 func (s *StmtUpdate) Exec(values []driver.Value) (driver.Result, error) {
-	_, err := s.Execute(values)
-	result := &ResultNoResultSet{Successful: err == nil}
-	if err != nil {
-		result.AffectedRows = 0
-	} else {
-		result.AffectedRows = 1
+	output, err := s.Execute(values)
+	if IsAwsError(err, "ConditionalCheckFailedException") {
+		return &ResultNoResultSet{Successful: true, AffectedRows: 0}, nil
 	}
-	return result, err
+	if err != nil {
+		return &ResultNoResultSet{Successful: false, AffectedRows: 0}, err
+	}
+	return &ResultNoResultSet{Successful: true, AffectedRows: int64(len(output.Items))}, nil
 }
 
 /*----------------------------------------------------------------------*/
@@ -227,14 +240,10 @@ func (s *StmtUpdate) Exec(values []driver.Value) (driver.Result, error) {
 //
 // Syntax: follow "PartiQL delete statements for DynamoDB" https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.delete.html
 //
-// Note: StmtDelete returns the deleted item by appending "RETURNING RETURNING ALL OLD *" to the statement.
+// Note: StmtDelete returns the deleted item by appending "RETURNING ALL OLD *" to the statement.
 type StmtDelete struct {
 	*StmtExecutable
 }
-
-var (
-	reReturning = regexp.MustCompile(`(?im)\s+RETURNING\s+((ALL\s+OLD)|(MODIFIED\s+OLD)|(ALL\s+NEW)|(MODIFIED\s+NEW))\s+\*\s*$`)
-)
 
 func (s *StmtDelete) parse() error {
 	if !reReturning.MatchString(s.query) {
@@ -247,8 +256,9 @@ func (s *StmtDelete) parse() error {
 func (s *StmtDelete) Query(values []driver.Value) (driver.Rows, error) {
 	output, err := s.Execute(values)
 	result := &ResultResultSet{dbResult: output, columnTypes: make(map[string]reflect.Type)}
-	if err == nil {
+	if err == nil || IsAwsError(err, "ConditionalCheckFailedException") {
 		result.init()
+		err = nil
 	}
 	return result, err
 }

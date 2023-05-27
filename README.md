@@ -47,16 +47,22 @@ func main() {
 
 ## Data Source Name (DSN) format for AWS Dynamo DB
 
-// TODO
+`Region=<aws-region>;AkId=<aws-access-key-id>;Secret_Key=<aws-secret-key>[;Endpoint=<aws-dynamodb-endpoint>][TimeoutMs=<timeout-in-milliseconds>]`
+
+- `Region`: AWS region, for example `us-east-1`. If not supplied, the value of the environment `AWS_REGION` is used.
+- `AkId`: AWS Access Key ID, for example `AKIA1234567890ABCDEF`. If not supplied, the value of the environment `AWS_ACCESS_KEY_ID` is used.
+- `Secret_Key`: AWS Secret Key, for example `0***F`. If not supplied, the value of the environment `AWS_SECRET_ACCESS_KEY` is used.
+- `Endpoint`: (optional) AWS DynamoDB endpoint, for example `http://localhost:8000`; useful when AWS DynamoDB is running on local machine.
+- `TimeoutMs`: (optional) timeout in milliseconds. If not specified, default value is `10000`.
 
 ## Supported statements:
 
 - [Table](SQL_TABLE.md):
   - `CREATE TABLE`
   - `LIST TABLES`
+  - `DESCRIBE TABLE`
   - `ALTER TABLE`
   - `DROP TABLE`
-  - `DESCRIBE TABLE`
 
 - [Index](SQL_INDEX.md):
   - `DESCRIBE LSI`
@@ -65,7 +71,7 @@ func main() {
   - `ALTER GSI`
   - `DROP GSI`
 
-- [Document](SQL_DOCUMENT.md)
+- [Document](SQL_DOCUMENT.md):
   - `INSERT`
   - `SELECT`
   - `UPDATE`

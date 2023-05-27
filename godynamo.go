@@ -36,7 +36,7 @@ var (
 	}
 )
 
-// IsAwsError returns true if err is an AWS-specific error and it matches awsErrCode.
+// IsAwsError returns true if err is an AWS-specific error, and it matches awsErrCode.
 func IsAwsError(err error, awsErrCode string) bool {
 	if aerr, ok := err.(*smithy.OperationError); ok {
 		if herr, ok := aerr.Err.(*http.ResponseError); ok {

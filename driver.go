@@ -50,17 +50,20 @@ func (d *Driver) Open(connStr string) (driver.Conn, error) {
 	if err != nil || timeoutMs < 0 {
 		timeoutMs = 10000
 	}
+	region := params["REGION"]
+	if region == "" {
+		region = os.Getenv("AWS_REGION")
+	}
 	akid := params["AKID"]
 	if akid == "" {
 		akid = os.Getenv("AWS_ACCESS_KEY_ID")
 	}
 	secretKey := params["SECRET_KEY"]
 	if secretKey == "" {
-		secretKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
-	}
-	region := params["REGION"]
-	if region == "" {
-		region = os.Getenv("AWS_REGION")
+		secretKey = params["SECRETKEY"]
+		if secretKey == "" {
+			secretKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
+		}
 	}
 	opts := dynamodb.Options{
 		Credentials: credentials.NewStaticCredentialsProvider(akid, secretKey, ""),

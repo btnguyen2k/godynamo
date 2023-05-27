@@ -29,9 +29,9 @@ Syntax: [PartiQL select statements for DynamoDB](https://docs.aws.amazon.com/ama
 
 Example:
 ```go
-result, err := db.Query(`SELECT * FROM "session" WHERE app='frontend'`)
+dbrows, err := db.Query(`SELECT * FROM "session" WHERE app='frontend'`)
 if err == nil {
-	...
+	fetchAndPrintAllRows(dbrows)
 }
 ```
 
@@ -43,6 +43,36 @@ Sample result:
 |active|app|user|
 |------|---|----|
 |true|"frontend"|"user1"|
+
+## UPDATE
+
+Syntax: [PartiQL update statements for DynamoDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.update.html)
+
+Example:
+```go
+result, err := db.Exec(`UPDATE "tbltest" SET location=? SET os=? WHERE "app"=? AND "user"=?`, "VN", "Ubuntu", "app0", "user1")
+if err == nil {
+	numAffectedRow, err := result.RowsAffected()
+	...
+}
+```
+
+Description: use the `UPDATE` statement to modify the value of one or more attributes within an item in a table.
+
+- Note: the `UPDATE` must follow [PartiQL syntax](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.update.html).
+
+`Query` can also be used to fetch returned values.
+```go
+dbrows, err := db.Query(`UPDATE "tbltest" SET location=? SET os=? WHERE "app"=? AND "user"=? RETURNING MODIFIED OLD *`, "VN", "Ubuntu", "app0", "user0")
+if err == nil {
+	fetchAndPrintAllRows(dbrows)
+}
+```
+
+Sample result:
+|location|
+|--------|
+|"AU"    |
 
 ## DELETE
 
@@ -57,18 +87,19 @@ if err == nil {
 }
 ```
 
-`Query` can also be used to have the content of the old item returned.
-```go
-if err == nil {
-	...
-}
-```
-
 Description: use the `DELETE` statement to delete an existing item from a table.
 
 - Note: the `DELETE` must follow [PartiQL syntax](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.delete.html).
 
+`Query` can also be used to have the content of the old item returned.
+```go
+dbrows, err := db.Query(`DELETE FROM "tbltest" WHERE "app"=? AND "user"=?`, "app0", "user1")
+if err == nil {
+	fetchAndPrintAllRows(dbrows)
+}
+```
+
 Sample result:
 |app|location|platform|user|
 |---|--------|--------|----|
-|"app0"|"AU"|"Windows"|"user2"|
+|"app0"|"AU"|"Windows"|"user1"|

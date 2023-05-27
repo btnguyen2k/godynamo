@@ -2,9 +2,9 @@
 
 - `CREATE TABLE`
 - `LIST TABLES`
+- `DESCRIBE TABLE`
 - `ALTER TABLE`
 - `DROP TABLE`
-- `DESCRIBE TABLE`
 
 ## CREATE TABLE
 
@@ -74,6 +74,28 @@ Sample result:
 |tbltest2|
 |tbltest3|
 
+## DESCRIBE TABLE
+
+Syntax:
+```sql
+DESCRIBE TABLE <table-name>
+```
+
+Example:
+```go
+result, err := db.Query(`DESCRIBE TABLE demo`)
+if err == nil {
+	...
+}
+```
+
+Description: return info of a DynamoDB table specified by `table-name`.
+
+Sample result:
+|ArchivalSummary|AttributeDefinitions|BillingModeSummary|CreationDateTime|DeletionProtectionEnabled|GlobalSecondaryIndexes|GlobalTableVersion|ItemCount|KeySchema|LatestStreamArn|LatestStreamLabel|LocalSecondaryIndexes|ProvisionedThroughput|Replicas|RestoreSummary|SSEDescription|StreamSpecification|TableArn|TableClassSummary|TableId|TableName|TableSizeBytes|TableStatus|
+|---------------|--------------------|------------------|----------------|-------------------------|----------------------|------------------|---------|---------|---------------|-----------------|---------------------|---------------------|--------|--------------|--------------|-------------------|--------|-----------------|-------|---------|--------------|-----------|
+|null|[{"AttributeName":"app","AttributeType":"S"},{"AttributeName":"user","AttributeType":"S"},{"AttributeName":"timestamp","AttributeType":"N"},{"AttributeName":"browser","AttributeType":"S"},{"AttributeName":"os","AttributeType":"S"}]|{"BillingMode":"PAY_PER_REQUEST","LastUpdateToPayPerRequestDateTime":"2023-05-23T01:58:27.352Z"}|"2023-05-23T01:58:27.352Z"|null|null|null|0|[{"AttributeName":"app","KeyType":"HASH"},{"AttributeName":"user","KeyType":"RANGE"}]|null|null|[{"IndexArn":"arn:aws:dynamodb:ddblocal:000000000000:table/tbltemp/index/idxos","IndexName":"idxos","IndexSizeBytes":0,"ItemCount":0,"KeySchema":[{"AttributeName":"app","KeyType":"HASH"},{"AttributeName":"os","KeyType":"RANGE"}],"Projection":{"NonKeyAttributes":["os_name","os_version"],"ProjectionType":"INCLUDE"}},{"IndexArn":"arn:aws:dynamodb:ddblocal:000000000000:table/tbltemp/index/idxbrowser","IndexName":"idxbrowser","IndexSizeBytes":0,"ItemCount":0,"KeySchema":[{"AttributeName":"app","KeyType":"HASH"},{"AttributeName":"browser","KeyType":"RANGE"}],"Projection":{"NonKeyAttributes":null,"ProjectionType":"ALL"}},{"IndexArn":"arn:aws:dynamodb:ddblocal:000000000000:table/tbltemp/index/idxtime","IndexName":"idxtime","IndexSizeBytes":0,"ItemCount":0,"KeySchema":[{"AttributeName":"app","KeyType":"HASH"},{"AttributeName":"timestamp","KeyType":"RANGE"}],"Projection":{"NonKeyAttributes":null,"ProjectionType":"KEYS_ONLY"}}]|{"LastDecreaseDateTime":"1970-01-01T00:00:00Z","LastIncreaseDateTime":"1970-01-01T00:00:00Z","NumberOfDecreasesToday":0,"ReadCapacityUnits":0,"WriteCapacityUnits":0}|null|null|null|null|"arn:aws:dynamodb:ddblocal:000000000000:table/tbltemp"|null|null|"tbltemp"|0|"ACTIVE"|
+
 ## ALTER TABLE
 
 Syntax:
@@ -125,25 +147,3 @@ Description: delete an existing DynamoDB table specified by `table-name`.
 - If the specified table does not exist:
   - If `IF EXISTS` is supplied: `RowsAffected()` returns `0, nil`
   - If `IF EXISTS` is _not_ supplied: `RowsAffected()` returns `_, error`
-
-## DESCRIBE TABLE
-
-Syntax:
-```sql
-DESCRIBE TABLE <table-name>
-```
-
-Example:
-```go
-result, err := db.Query(`DESCRIBE TABLE demo`)
-if err == nil {
-	...
-}
-```
-
-Description: return info of a DynamoDB table specified by `table-name`.
-
-Sample result:
-|ArchivalSummary|AttributeDefinitions|BillingModeSummary|CreationDateTime|DeletionProtectionEnabled|GlobalSecondaryIndexes|GlobalTableVersion|ItemCount|KeySchema|LatestStreamArn|LatestStreamLabel|LocalSecondaryIndexes|ProvisionedThroughput|Replicas|RestoreSummary|SSEDescription|StreamSpecification|TableArn|TableClassSummary|TableId|TableName|TableSizeBytes|TableStatus|
-|---------------|--------------------|------------------|----------------|-------------------------|----------------------|------------------|---------|---------|---------------|-----------------|---------------------|---------------------|--------|--------------|--------------|-------------------|--------|-----------------|-------|---------|--------------|-----------|
-|null|[{"AttributeName":"app","AttributeType":"S"},{"AttributeName":"user","AttributeType":"S"},{"AttributeName":"timestamp","AttributeType":"N"},{"AttributeName":"browser","AttributeType":"S"},{"AttributeName":"os","AttributeType":"S"}]|{"BillingMode":"PAY_PER_REQUEST","LastUpdateToPayPerRequestDateTime":"2023-05-23T01:58:27.352Z"}|"2023-05-23T01:58:27.352Z"|null|null|null|0|[{"AttributeName":"app","KeyType":"HASH"},{"AttributeName":"user","KeyType":"RANGE"}]|null|null|[{"IndexArn":"arn:aws:dynamodb:ddblocal:000000000000:table/tbltemp/index/idxos","IndexName":"idxos","IndexSizeBytes":0,"ItemCount":0,"KeySchema":[{"AttributeName":"app","KeyType":"HASH"},{"AttributeName":"os","KeyType":"RANGE"}],"Projection":{"NonKeyAttributes":["os_name","os_version"],"ProjectionType":"INCLUDE"}},{"IndexArn":"arn:aws:dynamodb:ddblocal:000000000000:table/tbltemp/index/idxbrowser","IndexName":"idxbrowser","IndexSizeBytes":0,"ItemCount":0,"KeySchema":[{"AttributeName":"app","KeyType":"HASH"},{"AttributeName":"browser","KeyType":"RANGE"}],"Projection":{"NonKeyAttributes":null,"ProjectionType":"ALL"}},{"IndexArn":"arn:aws:dynamodb:ddblocal:000000000000:table/tbltemp/index/idxtime","IndexName":"idxtime","IndexSizeBytes":0,"ItemCount":0,"KeySchema":[{"AttributeName":"app","KeyType":"HASH"},{"AttributeName":"timestamp","KeyType":"RANGE"}],"Projection":{"NonKeyAttributes":null,"ProjectionType":"KEYS_ONLY"}}]|{"LastDecreaseDateTime":"1970-01-01T00:00:00Z","LastIncreaseDateTime":"1970-01-01T00:00:00Z","NumberOfDecreasesToday":0,"ReadCapacityUnits":0,"WriteCapacityUnits":0}|null|null|null|null|"arn:aws:dynamodb:ddblocal:000000000000:table/tbltemp"|null|null|"tbltemp"|0|"ACTIVE"|
