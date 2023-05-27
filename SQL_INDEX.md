@@ -15,9 +15,9 @@ DESCRIBE LSI <index-name> ON <table-name>
 
 Example:
 ```go
-result, err := db.Query(`DESCRIBE LSI idxos ON session`)
+dbrows, err := db.Query(`DESCRIBE LSI idxos ON session`)
 if err == nil {
-	...
+	fetchAndPrintAllRows(dbrows)
 }
 ```
 
@@ -76,9 +76,9 @@ DESCRIBE GSI <index-name> ON <table-name>
 
 Example:
 ```go
-result, err := db.Query(`DESCRIBE GSI idxos ON session`)
+dbrows, err := db.Query(`DESCRIBE GSI idxos ON session`)
 if err == nil {
-	...
+	fetchAndPrintAllRows(dbrows)
 }
 ```
 
