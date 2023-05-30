@@ -156,14 +156,27 @@ func (s *StmtCreateTable) validate() error {
 	return nil
 }
 
-// Query implements driver.Stmt.Query.
+// Query implements driver.Stmt/Query.
 // This function is not implemented, use Exec instead.
 func (s *StmtCreateTable) Query(_ []driver.Value) (driver.Rows, error) {
 	return nil, errors.New("this operation is not supported, please use Exec")
 }
 
-// Exec implements driver.Stmt.Exec.
+// QueryContext implements driver.StmtQueryContext/QueryContext.
+// This function is not implemented, use ExecContext instead.
+func (s *StmtCreateTable) QueryContext(_ context.Context, _ []driver.NamedValue) (driver.Rows, error) {
+	return nil, errors.New("this operation is not supported, please use ExecContext")
+}
+
+// Exec implements driver.Stmt/Exec.
 func (s *StmtCreateTable) Exec(_ []driver.Value) (driver.Result, error) {
+	return s.ExecContext(nil, nil)
+}
+
+// ExecContext implements driver.StmtExecContext/Exec.
+//
+// @Available since v0.2.0
+func (s *StmtCreateTable) ExecContext(ctx context.Context, _ []driver.NamedValue) (driver.Result, error) {
 	attrDefs := make([]types.AttributeDefinition, 0, 2)
 	attrDefs = append(attrDefs, types.AttributeDefinition{AttributeName: &s.pkName, AttributeType: dataTypes[s.pkType]})
 	keySchema := make([]types.KeySchemaElement, 0, 2)
@@ -212,31 +225,15 @@ func (s *StmtCreateTable) Exec(_ []driver.Value) (driver.Result, error) {
 			WriteCapacityUnits: s.wcu,
 		}
 	}
-	_, err := s.conn.client.CreateTable(context.Background(), input)
-	result := &ResultCreateTable{Successful: err == nil}
+	_, err := s.conn.client.CreateTable(s.conn.ensureContext(ctx), input)
+	affectedRows := int64(0)
+	if err == nil {
+		affectedRows = 1
+	}
 	if s.ifNotExists && IsAwsError(err, "ResourceInUseException") {
 		err = nil
 	}
-	return result, err
-}
-
-// ResultCreateTable captures the result from CREATE TABLE statement.
-type ResultCreateTable struct {
-	// Successful flags if the operation was successful or not.
-	Successful bool
-}
-
-// LastInsertId implements driver.Result.LastInsertId.
-func (r *ResultCreateTable) LastInsertId() (int64, error) {
-	return 0, fmt.Errorf("this operation is not supported")
-}
-
-// RowsAffected implements driver.Result.RowsAffected.
-func (r *ResultCreateTable) RowsAffected() (int64, error) {
-	if r.Successful {
-		return 1, nil
-	}
-	return 0, nil
+	return &ResultNoResultSet{err: err, affectedRows: affectedRows}, err
 }
 
 /*----------------------------------------------------------------------*/
@@ -254,15 +251,28 @@ func (s *StmtListTables) validate() error {
 	return nil
 }
 
-// Exec implements driver.Stmt.Exec.
+// Exec implements driver.Stmt/Exec.
 // This function is not implemented, use Query instead.
 func (s *StmtListTables) Exec(_ []driver.Value) (driver.Result, error) {
 	return nil, errors.New("this operation is not supported, please use Query")
 }
 
-// Query implements driver.Stmt.Query.
+// ExecContext implements driver.StmtExecContext/Exec.
+// This function is not implemented, use QueryContext instead.
+func (s *StmtListTables) ExecContext(_ context.Context, _ []driver.NamedValue) (driver.Result, error) {
+	return nil, errors.New("this operation is not supported, please use QueryContext")
+}
+
+// Query implements driver.Stmt/Query.
 func (s *StmtListTables) Query(_ []driver.Value) (driver.Rows, error) {
-	output, err := s.conn.client.ListTables(context.Background(), &dynamodb.ListTablesInput{})
+	return s.QueryContext(nil, nil)
+}
+
+// QueryContext implements driver.StmtQueryContext/QueryContext.
+//
+// @Available since v0.2.0
+func (s *StmtListTables) QueryContext(ctx context.Context, _ []driver.NamedValue) (driver.Rows, error) {
+	output, err := s.conn.client.ListTables(s.conn.ensureContext(ctx), &dynamodb.ListTablesInput{})
 	var rows driver.Rows
 	if err == nil {
 		rows = &RowsListTables{
@@ -282,17 +292,17 @@ type RowsListTables struct {
 	cursorCount int
 }
 
-// Columns implements driver.Rows.Columns.
+// Columns implements driver.Rows/Columns.
 func (r *RowsListTables) Columns() []string {
 	return []string{"$1"}
 }
 
-// Close implements driver.Rows.Close.
+// Close implements driver.Rows/Close.
 func (r *RowsListTables) Close() error {
 	return nil
 }
 
-// Next implements driver.Rows.Next.
+// Next implements driver.Rows/Next.
 func (r *RowsListTables) Next(dest []driver.Value) error {
 	if r.cursorCount >= r.count {
 		return io.EOF
@@ -303,30 +313,15 @@ func (r *RowsListTables) Next(dest []driver.Value) error {
 	return nil
 }
 
-// ColumnTypeScanType implements driver.RowsColumnTypeScanType.ColumnTypeScanType
+// ColumnTypeScanType implements driver.RowsColumnTypeScanType/ColumnTypeScanType
 func (r *RowsListTables) ColumnTypeScanType(_ int) reflect.Type {
 	return reddo.TypeString
 }
 
-// ColumnTypeDatabaseTypeName implements driver.RowsColumnTypeDatabaseTypeName.ColumnTypeDatabaseTypeName
+// ColumnTypeDatabaseTypeName implements driver.RowsColumnTypeDatabaseTypeName/ColumnTypeDatabaseTypeName
 func (r *RowsListTables) ColumnTypeDatabaseTypeName(_ int) string {
 	return "STRING"
 }
-
-// // ColumnTypeLength implements driver.RowsColumnTypeLength.ColumnTypeLength
-// func (r *RowsListTables) ColumnTypeLength(index int) (length int64, ok bool) {
-// 	return math.MaxInt64, true
-// }
-
-// // ColumnTypeNullable implements driver.RowsColumnTypeNullable.ColumnTypeNullable
-// func (r *RowsListTables) ColumnTypeNullable(index int) (nullable, ok bool) {
-// 	return false, true
-// }
-
-// // ColumnTypePrecisionScale implements driver.RowsColumnTypePrecisionScale.ColumnTypePrecisionScale
-// func (r *RowsListTables) ColumnTypePrecisionScale(index int) (precision, scale int64, ok bool) {
-// 	return 0, 0, false
-// }
 
 /*----------------------------------------------------------------------*/
 
@@ -392,14 +387,27 @@ func (s *StmtAlterTable) validate() error {
 	return nil
 }
 
-// Query implements driver.Stmt.Query.
+// Query implements driver.Stmt/Query.
 // This function is not implemented, use Exec instead.
 func (s *StmtAlterTable) Query(_ []driver.Value) (driver.Rows, error) {
 	return nil, errors.New("this operation is not supported, please use Exec")
 }
 
-// Exec implements driver.Stmt.Exec.
+// QueryContext implements driver.StmtQueryContext/QueryContext.
+// This function is not implemented, use ExecContext instead.
+func (s *StmtAlterTable) QueryContext(_ []driver.Value) (driver.Rows, error) {
+	return nil, errors.New("this operation is not supported, please use ExecContext")
+}
+
+// Exec implements driver.Stmt/Exec.
 func (s *StmtAlterTable) Exec(_ []driver.Value) (driver.Result, error) {
+	return s.ExecContext(nil, nil)
+}
+
+// ExecContext implements driver.StmtExecContext/ExecContext.
+//
+// @Available since v0.2.0
+func (s *StmtAlterTable) ExecContext(ctx context.Context, _ []driver.NamedValue) (driver.Result, error) {
 	input := &dynamodb.UpdateTableInput{
 		TableName: &s.tableName,
 	}
@@ -417,28 +425,12 @@ func (s *StmtAlterTable) Exec(_ []driver.Value) (driver.Result, error) {
 			}
 		}
 	}
-	_, err := s.conn.client.UpdateTable(context.Background(), input)
-	result := &ResultAlterTable{Successful: err == nil}
-	return result, err
-}
-
-// ResultAlterTable captures the result from CREATE TABLE statement.
-type ResultAlterTable struct {
-	// Successful flags if the operation was successful or not.
-	Successful bool
-}
-
-// LastInsertId implements driver.Result.LastInsertId.
-func (r *ResultAlterTable) LastInsertId() (int64, error) {
-	return 0, fmt.Errorf("this operation is not supported")
-}
-
-// RowsAffected implements driver.Result.RowsAffected.
-func (r *ResultAlterTable) RowsAffected() (int64, error) {
-	if r.Successful {
-		return 1, nil
+	_, err := s.conn.client.UpdateTable(s.conn.ensureContext(ctx), input)
+	affectedRows := int64(0)
+	if err == nil {
+		affectedRows = 1
 	}
-	return 0, nil
+	return &ResultNoResultSet{err: err, affectedRows: affectedRows}, err
 }
 
 /*----------------------------------------------------------------------*/
@@ -463,42 +455,39 @@ func (s *StmtDropTable) validate() error {
 	return nil
 }
 
-// Query implements driver.Stmt.Query.
+// Query implements driver.Stmt/Query.
 // This function is not implemented, use Exec instead.
 func (s *StmtDropTable) Query(_ []driver.Value) (driver.Rows, error) {
 	return nil, errors.New("this operation is not supported, please use Exec")
 }
 
-// Exec implements driver.Stmt.Exec.
+// QueryContext implements driver.StmtQueryContext/QueryContext.
+// This function is not implemented, use ExecContext instead.
+func (s *StmtDropTable) QueryContext(_ context.Context, _ []driver.NamedValue) (driver.Rows, error) {
+	return nil, errors.New("this operation is not supported, please use ExecContext")
+}
+
+// Exec implements driver.Stmt/Exec.
 func (s *StmtDropTable) Exec(_ []driver.Value) (driver.Result, error) {
+	return s.ExecContext(nil, nil)
+}
+
+// ExecContext implements driver.StmtExecContext/Exec.
+//
+// @Available since v0.2.0
+func (s *StmtDropTable) ExecContext(ctx context.Context, _ []driver.NamedValue) (driver.Result, error) {
 	input := &dynamodb.DeleteTableInput{
 		TableName: &s.tableName,
 	}
-	_, err := s.conn.client.DeleteTable(context.Background(), input)
-	result := &ResultDropTable{Successful: err == nil}
+	_, err := s.conn.client.DeleteTable(s.conn.ensureContext(ctx), input)
+	affectedRows := int64(0)
+	if err == nil {
+		affectedRows = 1
+	}
 	if s.ifExists && IsAwsError(err, "ResourceNotFoundException") {
 		err = nil
 	}
-	return result, err
-}
-
-// ResultDropTable captures the result from DROP TABLE statement.
-type ResultDropTable struct {
-	// Successful flags if the operation was successful or not.
-	Successful bool
-}
-
-// LastInsertId implements driver.Result.LastInsertId.
-func (r *ResultDropTable) LastInsertId() (int64, error) {
-	return 0, fmt.Errorf("this operation is not supported")
-}
-
-// RowsAffected implements driver.Result.RowsAffected.
-func (r *ResultDropTable) RowsAffected() (int64, error) {
-	if r.Successful {
-		return 1, nil
-	}
-	return 0, nil
+	return &ResultNoResultSet{err: err, affectedRows: affectedRows}, err
 }
 
 /*----------------------------------------------------------------------*/
@@ -520,12 +509,31 @@ func (s *StmtDescribeTable) validate() error {
 	return nil
 }
 
-// Query implements driver.Stmt.Query.
+// Exec implements driver.Stmt/Exec.
+// This function is not implemented, use Query instead.
+func (s *StmtDescribeTable) Exec(_ []driver.Value) (driver.Result, error) {
+	return nil, errors.New("this operation is not supported, please use Query")
+}
+
+// ExecContext implements driver.StmtExecContext/ExecContext.
+// This function is not implemented, use QueryContext instead.
+func (s *StmtDescribeTable) ExecContext(_ context.Context, _ []driver.NamedValue) (driver.Result, error) {
+	return nil, errors.New("this operation is not supported, please use QueryContext")
+}
+
+// Query implements driver.Stmt/Query.
 func (s *StmtDescribeTable) Query(_ []driver.Value) (driver.Rows, error) {
+	return s.QueryContext(nil, nil)
+}
+
+// QueryContext implements driver.StmtQueryContext/Query.
+//
+// @Available since v0.2.0
+func (s *StmtDescribeTable) QueryContext(ctx context.Context, _ []driver.NamedValue) (driver.Rows, error) {
 	input := &dynamodb.DescribeTableInput{
 		TableName: &s.tableName,
 	}
-	output, err := s.conn.client.DescribeTable(context.Background(), input)
+	output, err := s.conn.client.DescribeTable(s.conn.ensureContext(ctx), input)
 	result := &RowsDescribeTable{count: 1}
 	if err == nil {
 		js, _ := json.Marshal(output.Table)
@@ -545,12 +553,6 @@ func (s *StmtDescribeTable) Query(_ []driver.Value) (driver.Rows, error) {
 	return result, err
 }
 
-// Exec implements driver.Stmt.Exec.
-// This function is not implemented, use Query instead.
-func (s *StmtDescribeTable) Exec(_ []driver.Value) (driver.Result, error) {
-	return nil, errors.New("this operation is not supported, please use Query")
-}
-
 // RowsDescribeTable captures the result from DESCRIBE TABLE statement.
 type RowsDescribeTable struct {
 	count          int
@@ -560,17 +562,17 @@ type RowsDescribeTable struct {
 	cursorCount    int
 }
 
-// Columns implements driver.Rows.Columns.
+// Columns implements driver.Rows/Columns.
 func (r *RowsDescribeTable) Columns() []string {
 	return r.columnList
 }
 
-// Close implements driver.Rows.Close.
+// Close implements driver.Rows/Close.
 func (r *RowsDescribeTable) Close() error {
 	return nil
 }
 
-// Next implements driver.Rows.Next.
+// Next implements driver.Rows/Next.
 func (r *RowsDescribeTable) Next(dest []driver.Value) error {
 	if r.cursorCount >= r.count {
 		return io.EOF
@@ -582,27 +584,12 @@ func (r *RowsDescribeTable) Next(dest []driver.Value) error {
 	return nil
 }
 
-// ColumnTypeScanType implements driver.RowsColumnTypeScanType.ColumnTypeScanType
+// ColumnTypeScanType implements driver.RowsColumnTypeScanType/ColumnTypeScanType
 func (r *RowsDescribeTable) ColumnTypeScanType(index int) reflect.Type {
 	return r.columnTypeList[index]
 }
 
-// ColumnTypeDatabaseTypeName implements driver.RowsColumnTypeDatabaseTypeName.ColumnTypeDatabaseTypeName
+// ColumnTypeDatabaseTypeName implements driver.RowsColumnTypeDatabaseTypeName/ColumnTypeDatabaseTypeName
 func (r *RowsDescribeTable) ColumnTypeDatabaseTypeName(index int) string {
 	return goTypeToDynamodbType(r.columnTypeList[index])
 }
-
-// // ColumnTypeLength implements driver.RowsColumnTypeLength.ColumnTypeLength
-// func (r *RowsDescribeTable) ColumnTypeLength(index int) (length int64, ok bool) {
-// 	return math.MaxInt64, true
-// }
-
-// // ColumnTypeNullable implements driver.RowsColumnTypeNullable.ColumnTypeNullable
-// func (r *RowsDescribeTable) ColumnTypeNullable(index int) (nullable, ok bool) {
-// 	return false, true
-// }
-
-// // ColumnTypePrecisionScale implements driver.RowsColumnTypePrecisionScale.ColumnTypePrecisionScale
-// func (r *RowsDescribeTable) ColumnTypePrecisionScale(index int) (precision, scale int64, ok bool) {
-// 	return 0, 0, false
-// }

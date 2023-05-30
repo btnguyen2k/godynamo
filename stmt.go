@@ -3,8 +3,14 @@ package godynamo
 import (
 	"database/sql/driver"
 	"fmt"
+	"io"
+	"reflect"
 	"regexp"
+	"sort"
 	"strings"
+
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
 const (
@@ -190,7 +196,7 @@ func (s OptStrings) FirstString() string {
 	return ""
 }
 
-// Stmt is AWS DynamoDB prepared statement handler.
+// Stmt is AWS DynamoDB abstract implementation of driver.Stmt.
 type Stmt struct {
 	query    string // the SQL query
 	conn     *Conn  // the connection that this prepared statement is bound to
@@ -216,12 +222,104 @@ func (s *Stmt) parseWithOpts(withOptsStr string) error {
 	return nil
 }
 
-// Close implements driver.Stmt.Close.
+// Close implements driver.Stmt/Close.
 func (s *Stmt) Close() error {
 	return nil
 }
 
-// NumInput implements driver.Stmt.NumInput.
+// NumInput implements driver.Stmt/NumInput.
 func (s *Stmt) NumInput() int {
 	return s.numInput
+}
+
+// ResultNoResultSet captures the result from statements that do not expect a ResultSet to be returned.
+type ResultNoResultSet struct {
+	err          error
+	affectedRows int64
+}
+
+// LastInsertId implements driver.Result/LastInsertId.
+func (r *ResultNoResultSet) LastInsertId() (int64, error) {
+	return 0, fmt.Errorf("this operation is not supported")
+}
+
+// RowsAffected implements driver.Result/RowsAffected.
+func (r *ResultNoResultSet) RowsAffected() (int64, error) {
+	return r.affectedRows, r.err
+}
+
+// ResultResultSet captures the result from statements that expect a ResultSet to be returned.
+type ResultResultSet struct {
+	err         error
+	count       int
+	stmtOutput  *dynamodb.ExecuteStatementOutput
+	cursorCount int
+	columnList  []string
+	columnTypes map[string]reflect.Type
+}
+
+func (r *ResultResultSet) init() *ResultResultSet {
+	if r.stmtOutput == nil {
+		return r
+	}
+	if r.columnTypes == nil {
+		r.columnTypes = make(map[string]reflect.Type)
+	}
+	r.count = len(r.stmtOutput.Items)
+	colMap := make(map[string]bool)
+	for _, item := range r.stmtOutput.Items {
+		for col, av := range item {
+			colMap[col] = true
+			if r.columnTypes[col] == nil {
+				var value interface{}
+				attributevalue.Unmarshal(av, &value)
+				r.columnTypes[col] = reflect.TypeOf(value)
+			}
+		}
+	}
+	r.columnList = make([]string, 0, len(colMap))
+	for col := range colMap {
+		r.columnList = append(r.columnList, col)
+	}
+	sort.Strings(r.columnList)
+
+	return r
+}
+
+// Columns implements driver.Rows/Columns.
+func (r *ResultResultSet) Columns() []string {
+	return r.columnList
+}
+
+// ColumnTypeScanType implements driver.RowsColumnTypeScanType/ColumnTypeScanType
+func (r *ResultResultSet) ColumnTypeScanType(index int) reflect.Type {
+	return r.columnTypes[r.columnList[index]]
+}
+
+// ColumnTypeDatabaseTypeName implements driver.RowsColumnTypeDatabaseTypeName/ColumnTypeDatabaseTypeName
+func (r *ResultResultSet) ColumnTypeDatabaseTypeName(index int) string {
+	return goTypeToDynamodbType(r.columnTypes[r.columnList[index]])
+}
+
+// Close implements driver.Rows/Close.
+func (r *ResultResultSet) Close() error {
+	return r.err
+}
+
+// Next implements driver.Rows/Next.
+func (r *ResultResultSet) Next(dest []driver.Value) error {
+	if r.err != nil {
+		return r.err
+	}
+	if r.cursorCount >= r.count {
+		return io.EOF
+	}
+	rowData := r.stmtOutput.Items[r.cursorCount]
+	r.cursorCount++
+	for i, colName := range r.columnList {
+		var value interface{}
+		attributevalue.Unmarshal(rowData[colName], &value)
+		dest[i] = value
+	}
+	return nil
 }

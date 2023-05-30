@@ -74,6 +74,10 @@ Sample result:
 |--------|
 |"AU"    |
 
+> If there is no matched item, the error `ConditionalCheckFailedException` is suspended. That means:
+> - `RowsAffected()` returns `(0, nil)`
+> - `Query` returns empty result set.
+
 ## DELETE
 
 Syntax: [PartiQL delete statements for DynamoDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.delete.html)
@@ -103,3 +107,7 @@ Sample result:
 |app|location|platform|user|
 |---|--------|--------|----|
 |"app0"|"AU"|"Windows"|"user1"|
+
+> If there is no matched item, the error `ConditionalCheckFailedException` is suspended. That means:
+> - `RowsAffected()` returns `(0, nil)`
+> - `Query` returns empty result set.

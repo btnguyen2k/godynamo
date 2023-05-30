@@ -25,17 +25,17 @@ type RowsDescribeIndex struct {
 	cursorCount    int
 }
 
-// Columns implements driver.Rows.Columns.
+// Columns implements driver.Rows/Columns.
 func (r *RowsDescribeIndex) Columns() []string {
 	return r.columnList
 }
 
-// Close implements driver.Rows.Close.
+// Close implements driver.Rows/Close.
 func (r *RowsDescribeIndex) Close() error {
 	return nil
 }
 
-// Next implements driver.Rows.Next.
+// Next implements driver.Rows/Next.
 func (r *RowsDescribeIndex) Next(dest []driver.Value) error {
 	if r.cursorCount >= r.count {
 		return io.EOF
@@ -47,12 +47,12 @@ func (r *RowsDescribeIndex) Next(dest []driver.Value) error {
 	return nil
 }
 
-// ColumnTypeScanType implements driver.RowsColumnTypeScanType.ColumnTypeScanType
+// ColumnTypeScanType implements driver.RowsColumnTypeScanType/ColumnTypeScanType
 func (r *RowsDescribeIndex) ColumnTypeScanType(index int) reflect.Type {
 	return r.columnTypeList[index]
 }
 
-// ColumnTypeDatabaseTypeName implements driver.RowsColumnTypeDatabaseTypeName.ColumnTypeDatabaseTypeName
+// ColumnTypeDatabaseTypeName implements driver.RowsColumnTypeDatabaseTypeName/ColumnTypeDatabaseTypeName
 func (r *RowsDescribeIndex) ColumnTypeDatabaseTypeName(index int) string {
 	return goTypeToDynamodbType(r.columnTypeList[index])
 }
@@ -79,12 +79,31 @@ func (s *StmtDescribeLSI) validate() error {
 	return nil
 }
 
-// Query implements driver.Stmt.Query.
+// Exec implements driver.Stmt/Exec.
+// This function is not implemented, use Query instead.
+func (s *StmtDescribeLSI) Exec(_ []driver.Value) (driver.Result, error) {
+	return nil, errors.New("this operation is not supported, please use Query")
+}
+
+// ExecContext implements driver.StmtExecContext/ExecContext.
+// This function is not implemented, use QueryContext instead.
+func (s *StmtDescribeLSI) ExecContext(_ context.Context, _ []driver.NamedValue) (driver.Result, error) {
+	return nil, errors.New("this operation is not supported, please use QueryContext")
+}
+
+// Query implements driver.Stmt/Query.
 func (s *StmtDescribeLSI) Query(_ []driver.Value) (driver.Rows, error) {
+	return s.QueryContext(nil, nil)
+}
+
+// QueryContext implements driver.StmtQueryContext/QueryContext.
+//
+// @Available since v0.2.0
+func (s *StmtDescribeLSI) QueryContext(ctx context.Context, _ []driver.Value) (driver.Rows, error) {
 	input := &dynamodb.DescribeTableInput{
 		TableName: &s.tableName,
 	}
-	output, err := s.conn.client.DescribeTable(context.Background(), input)
+	output, err := s.conn.client.DescribeTable(s.conn.ensureContext(ctx), input)
 	result := &RowsDescribeIndex{count: 0}
 	if err == nil {
 		for _, lsi := range output.Table.LocalSecondaryIndexes {
@@ -105,12 +124,6 @@ func (s *StmtDescribeLSI) Query(_ []driver.Value) (driver.Rows, error) {
 		}
 	}
 	return result, err
-}
-
-// Exec implements driver.Stmt.Exec.
-// This function is not implemented, use Query instead.
-func (s *StmtDescribeLSI) Exec(_ []driver.Value) (driver.Result, error) {
-	return nil, errors.New("this operation is not supported, please use Query")
 }
 
 /*----------------------------------------------------------------------*/
@@ -214,14 +227,27 @@ func (s *StmtCreateGSI) validate() error {
 	return nil
 }
 
-// Query implements driver.Stmt.Query.
+// Query implements driver.Stmt/Query.
 // This function is not implemented, use Exec instead.
 func (s *StmtCreateGSI) Query(_ []driver.Value) (driver.Rows, error) {
 	return nil, errors.New("this operation is not supported, please use Exec")
 }
 
-// Exec implements driver.Stmt.Exec.
+// QueryContext implements driver.StmtQueryContext/QueryContext.
+// This function is not implemented, use ExecContext instead.
+func (s *StmtCreateGSI) QueryContext(_ context.Context, _ []driver.NamedValue) (driver.Rows, error) {
+	return nil, errors.New("this operation is not supported, please use ExecContext")
+}
+
+// Exec implements driver.Stmt/Exec.
 func (s *StmtCreateGSI) Exec(_ []driver.Value) (driver.Result, error) {
+	return s.ExecContext(nil, nil)
+}
+
+// ExecContext implements driver.StmtExecContext/ExecContext.
+//
+// @Available since v0.2.0
+func (s *StmtCreateGSI) ExecContext(ctx context.Context, _ []driver.NamedValue) (driver.Result, error) {
 	attrDefs := make([]types.AttributeDefinition, 0, 2)
 	attrDefs = append(attrDefs, types.AttributeDefinition{AttributeName: &s.pkName, AttributeType: dataTypes[s.pkType]})
 	keySchema := make([]types.KeySchemaElement, 0, 2)
@@ -259,33 +285,17 @@ func (s *StmtCreateGSI) Exec(_ []driver.Value) (driver.Result, error) {
 		GlobalSecondaryIndexUpdates: []types.GlobalSecondaryIndexUpdate{{Create: gsiInput}},
 	}
 
-	_, err := s.conn.client.UpdateTable(context.Background(), input)
-	result := &ResultCreateGSI{Successful: err == nil}
+	_, err := s.conn.client.UpdateTable(s.conn.ensureContext(ctx), input)
+	affectedRows := int64(0)
+	if err == nil {
+		affectedRows = 1
+	}
 	if s.ifNotExists && err != nil {
 		if IsAwsError(err, "ResourceInUseException") || strings.Index(err.Error(), "already exist") >= 0 {
 			err = nil
 		}
 	}
-	return result, err
-}
-
-// ResultCreateGSI captures the result from CREATE GSI statement.
-type ResultCreateGSI struct {
-	// Successful flags if the operation was successful or not.
-	Successful bool
-}
-
-// LastInsertId implements driver.Result.LastInsertId.
-func (r *ResultCreateGSI) LastInsertId() (int64, error) {
-	return 0, fmt.Errorf("this operation is not supported")
-}
-
-// RowsAffected implements driver.Result.RowsAffected.
-func (r *ResultCreateGSI) RowsAffected() (int64, error) {
-	if r.Successful {
-		return 1, nil
-	}
-	return 0, nil
+	return &ResultNoResultSet{err: err, affectedRows: affectedRows}, err
 }
 
 /*----------------------------------------------------------------------*/
@@ -310,12 +320,31 @@ func (s *StmtDescribeGSI) validate() error {
 	return nil
 }
 
-// Query implements driver.Stmt.Query.
+// Exec implements driver.Stmt/Exec.
+// This function is not implemented, use Query instead.
+func (s *StmtDescribeGSI) Exec(_ []driver.Value) (driver.Result, error) {
+	return nil, errors.New("this operation is not supported, please use Query")
+}
+
+// ExecContext implements driver.StmtExecContext/ExecContext.
+// This function is not implemented, use QueryContext instead.
+func (s *StmtDescribeGSI) ExecContext(_ context.Context, _ []driver.NamedValue) (driver.Result, error) {
+	return nil, errors.New("this operation is not supported, please use QueryContext")
+}
+
+// Query implements driver.Stmt/Query.
 func (s *StmtDescribeGSI) Query(_ []driver.Value) (driver.Rows, error) {
+	return s.QueryContext(nil, nil)
+}
+
+// QueryContext implements driver.StmtQueryContext/QueryContext.
+//
+// @Available since v0.2.0
+func (s *StmtDescribeGSI) QueryContext(ctx context.Context, _ []driver.NamedValue) (driver.Rows, error) {
 	input := &dynamodb.DescribeTableInput{
 		TableName: &s.tableName,
 	}
-	output, err := s.conn.client.DescribeTable(context.Background(), input)
+	output, err := s.conn.client.DescribeTable(s.conn.ensureContext(ctx), input)
 	result := &RowsDescribeIndex{count: 0}
 	if err == nil {
 		for _, gsi := range output.Table.GlobalSecondaryIndexes {
@@ -336,12 +365,6 @@ func (s *StmtDescribeGSI) Query(_ []driver.Value) (driver.Rows, error) {
 		}
 	}
 	return result, err
-}
-
-// Exec implements driver.Stmt.Exec.
-// This function is not implemented, use Query instead.
-func (s *StmtDescribeGSI) Exec(_ []driver.Value) (driver.Result, error) {
-	return nil, errors.New("this operation is not supported, please use Query")
 }
 
 /*----------------------------------------------------------------------*/
@@ -400,14 +423,27 @@ func (s *StmtAlterGSI) validate() error {
 	return nil
 }
 
-// Query implements driver.Stmt.Query.
+// Query implements driver.Stmt/Query.
 // This function is not implemented, use Exec instead.
 func (s *StmtAlterGSI) Query(_ []driver.Value) (driver.Rows, error) {
 	return nil, errors.New("this operation is not supported, please use Exec")
 }
 
-// Exec implements driver.Stmt.Exec.
+// QueryContext implements driver.StmtQueryContext/QueryContext.
+// This function is not implemented, use ExecContext instead.
+func (s *StmtAlterGSI) QueryContext(_ context.Context, _ []driver.NamedValue) (driver.Rows, error) {
+	return nil, errors.New("this operation is not supported, please use ExecContext")
+}
+
+// Exec implements driver.Stmt/Exec.
 func (s *StmtAlterGSI) Exec(_ []driver.Value) (driver.Result, error) {
+	return s.ExecContext(nil, nil)
+}
+
+// ExecContext implements driver.StmtExecContext/ExecContext.
+//
+// @Available since v0.2.0
+func (s *StmtAlterGSI) ExecContext(ctx context.Context, _ []driver.NamedValue) (driver.Result, error) {
 	gsiInput := &types.UpdateGlobalSecondaryIndexAction{
 		IndexName: &s.indexName,
 		ProvisionedThroughput: &types.ProvisionedThroughput{
@@ -420,28 +456,12 @@ func (s *StmtAlterGSI) Exec(_ []driver.Value) (driver.Result, error) {
 		GlobalSecondaryIndexUpdates: []types.GlobalSecondaryIndexUpdate{{Update: gsiInput}},
 	}
 
-	_, err := s.conn.client.UpdateTable(context.Background(), input)
-	result := &ResultAlterGSI{Successful: err == nil}
-	return result, err
-}
-
-// ResultAlterGSI captures the result from ALTER GSI statement.
-type ResultAlterGSI struct {
-	// Successful flags if the operation was successful or not.
-	Successful bool
-}
-
-// LastInsertId implements driver.Result.LastInsertId.
-func (r *ResultAlterGSI) LastInsertId() (int64, error) {
-	return 0, fmt.Errorf("this operation is not supported")
-}
-
-// RowsAffected implements driver.Result.RowsAffected.
-func (r *ResultAlterGSI) RowsAffected() (int64, error) {
-	if r.Successful {
-		return 1, nil
+	_, err := s.conn.client.UpdateTable(s.conn.ensureContext(ctx), input)
+	affectedRows := int64(0)
+	if err == nil {
+		affectedRows = 1
 	}
-	return 0, nil
+	return &ResultNoResultSet{err: err, affectedRows: affectedRows}, err
 }
 
 /*----------------------------------------------------------------------*/
@@ -470,42 +490,39 @@ func (s *StmtDropGSI) validate() error {
 	return nil
 }
 
-// Query implements driver.Stmt.Query.
+// Query implements driver.Stmt/Query.
 // This function is not implemented, use Exec instead.
 func (s *StmtDropGSI) Query(_ []driver.Value) (driver.Rows, error) {
 	return nil, errors.New("this operation is not supported, please use Exec")
 }
 
-// Exec implements driver.Stmt.Exec.
+// QueryContext implements driver.StmtQueryContext/QueryContext.
+// This function is not implemented, use ExecContext instead.
+func (s *StmtDropGSI) QueryContext(_ context.Context, _ []driver.NamedValue) (driver.Rows, error) {
+	return nil, errors.New("this operation is not supported, please use ExecContext")
+}
+
+// Exec implements driver.Stmt/Exec.
 func (s *StmtDropGSI) Exec(_ []driver.Value) (driver.Result, error) {
+	return s.ExecContext(nil, nil)
+}
+
+// ExecContext implements driver.StmtExecContext/ExecContext.
+//
+// @Available since v0.2.0
+func (s *StmtDropGSI) ExecContext(ctx context.Context, _ []driver.NamedValue) (driver.Result, error) {
 	gsiInput := &types.DeleteGlobalSecondaryIndexAction{IndexName: &s.indexName}
 	input := &dynamodb.UpdateTableInput{
 		TableName:                   &s.tableName,
 		GlobalSecondaryIndexUpdates: []types.GlobalSecondaryIndexUpdate{{Delete: gsiInput}},
 	}
-	_, err := s.conn.client.UpdateTable(context.Background(), input)
-	result := &ResultDropGSI{Successful: err == nil}
+	_, err := s.conn.client.UpdateTable(s.conn.ensureContext(ctx), input)
+	affectedRows := int64(0)
+	if err == nil {
+		affectedRows = 1
+	}
 	if s.ifExists && IsAwsError(err, "ResourceNotFoundException") {
 		err = nil
 	}
-	return result, err
-}
-
-// ResultDropGSI captures the result from DROP GSI statement.
-type ResultDropGSI struct {
-	// Successful flags if the operation was successful or not.
-	Successful bool
-}
-
-// LastInsertId implements driver.Result.LastInsertId.
-func (r *ResultDropGSI) LastInsertId() (int64, error) {
-	return 0, fmt.Errorf("this operation is not supported")
-}
-
-// RowsAffected implements driver.Result.RowsAffected.
-func (r *ResultDropGSI) RowsAffected() (int64, error) {
-	if r.Successful {
-		return 1, nil
-	}
-	return 0, nil
+	return &ResultNoResultSet{err: err, affectedRows: affectedRows}, err
 }

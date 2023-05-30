@@ -18,21 +18,17 @@ func init() {
 	sql.Register("godynamo", &Driver{})
 }
 
-// Driver is AWS DynamoDB driver for database/sql.
+// Driver is AWS DynamoDB implementation of driver.Driver.
 type Driver struct {
 }
 
-// Open implements driver.Driver.Open.
+// Open implements driver.Driver/Open.
 //
 // connStr is expected in the following format:
 //
-//	Region=<region>;AkId=<aws-key-id>;Secret_Key=<aws-secret-key>[;Endpoint=<dynamodb-endpoint>]
+//	Region=<region>;AkId=<aws-key-id>;Secret_Key=<aws-secret-key>[;Endpoint=<dynamodb-endpoint>][;TimeoutMs=<timeout-in-milliseconds>]
 //
-// If not supplied, default value for TimeoutMs is 10 seconds, Version is defaultApiVersion (which is "2018-12-31"), AutoId is true, and InsecureSkipVerify is false
-//
-// - DefaultDb is added since v0.1.1
-// - AutoId is added since v0.1.2
-// - InsecureSkipVerify is added since v0.1.4
+// If not supplied, default value for TimeoutMs is 10 seconds.
 func (d *Driver) Open(connStr string) (driver.Conn, error) {
 	params := make(map[string]string)
 	parts := strings.Split(connStr, ";")
@@ -57,12 +53,15 @@ func (d *Driver) Open(connStr string) (driver.Conn, error) {
 	akid := params["AKID"]
 	if akid == "" {
 		akid = os.Getenv("AWS_ACCESS_KEY_ID")
+		if akid == "" {
+			akid = os.Getenv("AWS_AKID")
+		}
 	}
 	secretKey := params["SECRET_KEY"]
 	if secretKey == "" {
 		secretKey = params["SECRETKEY"]
 		if secretKey == "" {
-			secretKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
+			secretKey = os.Getenv("AWS_SECRET_KEY")
 		}
 	}
 	opts := dynamodb.Options{
@@ -81,5 +80,5 @@ func (d *Driver) Open(connStr string) (driver.Conn, error) {
 		}
 	}
 	client := dynamodb.New(opts)
-	return &Conn{client: client}, nil
+	return &Conn{client: client, timeout: time.Duration(timeoutMs) * time.Millisecond}, nil
 }

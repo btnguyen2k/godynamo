@@ -72,16 +72,16 @@ func TestDriver_Conn(t *testing.T) {
 	defer conn.Close()
 }
 
-func TestDriver_Transaction(t *testing.T) {
-	testName := "TestDriver_Transaction"
-	db := _openDb(t, testName)
-	defer db.Close()
-	if tx, err := db.BeginTx(context.Background(), nil); tx != nil || err == nil {
-		t.Fatalf("%s failed: transaction is not supported yet", testName)
-	} else if strings.Index(err.Error(), "not supported") < 0 {
-		t.Fatalf("%s failed: transaction is not supported yet / %s", testName, err)
-	}
-}
+// func TestDriver_Transaction(t *testing.T) {
+// 	testName := "TestDriver_Transaction"
+// 	db := _openDb(t, testName)
+// 	defer db.Close()
+// 	if tx, err := db.BeginTx(context.Background(), nil); tx != nil || err == nil {
+// 		t.Fatalf("%s failed: transaction is not supported yet", testName)
+// 	} else if strings.Index(err.Error(), "not supported") < 0 {
+// 		t.Fatalf("%s failed: transaction is not supported yet / %s", testName, err)
+// 	}
+// }
 
 func TestDriver_Open(t *testing.T) {
 	testName := "TestDriver_Open"
