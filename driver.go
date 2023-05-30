@@ -62,6 +62,9 @@ func (d *Driver) Open(connStr string) (driver.Conn, error) {
 		secretKey = params["SECRETKEY"]
 		if secretKey == "" {
 			secretKey = os.Getenv("AWS_SECRET_KEY")
+			if secretKey == "" {
+				secretKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
+			}
 		}
 	}
 	opts := dynamodb.Options{
