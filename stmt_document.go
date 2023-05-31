@@ -101,6 +101,9 @@ func (s *StmtSelect) Query(values []driver.Value) (driver.Rows, error) {
 // @Available since v0.2.0
 func (s *StmtSelect) QueryContext(ctx context.Context, values []driver.NamedValue) (driver.Rows, error) {
 	outputFn, err := s.conn.executeContext(ctx, s.Stmt, values)
+	if err == ErrInTx {
+		return &TxResultResultSet{wrap: ResultResultSet{err: err}, outputFn: outputFn}, nil
+	}
 	result := &ResultResultSet{stmtOutput: outputFn()}
 	if err == nil {
 		result.init()
