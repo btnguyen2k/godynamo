@@ -77,6 +77,44 @@ func main() {
   - `UPDATE`
   - `DELETE`
 
+## Transaction support
+
+`godynamo` supports transactions that consist of write statements (e.g. `INSERT`, `UPDATE` and `DELETE`) since [v0.2.0](RELEASE-NOTES.md). Please note the following:
+
+- Any limitation set by [DynamoDB/PartiQL](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.multiplestatements.transactions.html) will apply.
+- [Table](SQL_TABLE.md) and [Index](SQL_INDEX.md) statements are not supported.
+- `UPDATE`/`DELETE` with `RETURNING` and `SELECT` statements are not supported.
+
+Example:
+```go
+tx, err := db.Begin()
+if err != nil {
+	panic(err)
+}
+defer tx.Rollback()
+result1, _ := tx.Exec(`INSERT INTO "tbltest" VALUE {'app': ?, 'user': ?, 'active': ?}`, "app0", "user1", true)
+result2, _ := tx.Exec(`INSERT INTO "tbltest" VALUE {'app': ?, 'user': ?, 'duration': ?}`, "app0", "user2", 1.23)
+err = tx.Commit()
+if err != nil {
+	panic(err)
+}
+rowsAffected1, err1 := fmt.Println(result1.RowsAffected())
+if err1 != nil {
+	panic(err1)
+}
+fmt.Println("RowsAffected:", rowsAffected1) // output "RowsAffected: 1"
+
+rowsAffected2, err2 := fmt.Println(result2.RowsAffected())
+if err2 != nil {
+	panic(err2)
+}
+fmt.Println("RowsAffected:", rowsAffected2) // output "RowsAffected: 1"
+```
+
+> If a statement's condition check fails (e.g. deleting non-existing item), the whole transaction will also fail. This behaviour is different from executing statements in non-transactional mode where failed condition check results in `0` affected row without error.
+>
+> You can use [`EXISTS` function](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-functions.exists.html) for condition checking.
+
 ## License
 
 MIT - See [LICENSE.md](LICENSE.md).

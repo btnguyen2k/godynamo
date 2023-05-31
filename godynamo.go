@@ -2,7 +2,9 @@
 package godynamo
 
 import (
+	"database/sql/driver"
 	"reflect"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
@@ -12,7 +14,7 @@ import (
 
 const (
 	// Version of package godynamo.
-	Version = "0.1.0"
+	Version = "0.2.0"
 )
 
 var (
@@ -46,6 +48,29 @@ func IsAwsError(err error, awsErrCode string) bool {
 	return false
 }
 
+// ValuesToNamedValues transforms a []driver.Value to []driver.NamedValue.
+//
+// @Available since v0.2.0
+func ValuesToNamedValues(values []driver.Value) []driver.NamedValue {
+	result := make([]driver.NamedValue, len(values))
+	for i, v := range values {
+		result[i] = driver.NamedValue{Name: "$" + strconv.Itoa(i+1), Ordinal: i, Value: v}
+	}
+	return result
+}
+
+// // NamedValuesToValues transforms a []driver.NamedValue to []driver.Value.
+// //
+// // @Available since v0.2.0
+// func NamedValuesToValues(values []driver.NamedValue) []driver.Value {
+// 	result := make([]driver.Value, len(values))
+// 	for i, v := range values {
+// 		result[i] = v.Value
+// 	}
+// 	return result
+// }
+
+// ToAttributeValue marshals a Go value to AWS AttributeValue.
 func ToAttributeValue(value interface{}) (types.AttributeValue, error) {
 	if av, ok := value.(types.AttributeValue); ok {
 		return av, nil

@@ -1,5 +1,9 @@
 # godynamo release notes
 
+## 2023-05-31 - v0.2.0
+
+- Add transation support.
+
 ## 2023-05-27 - v0.1.0
 
 - Driver for `database/sql`, supported statements:
