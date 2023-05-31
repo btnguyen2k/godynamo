@@ -1,6 +1,6 @@
 # godynamo release notes
 
-## 2023-05-xx - v0.2.0
+## 2023-05-31 - v0.2.0
 
 - Add transation support.
 

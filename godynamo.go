@@ -14,7 +14,7 @@ import (
 
 const (
 	// Version of package godynamo.
-	Version = "0.1.0"
+	Version = "0.2.0"
 )
 
 var (
@@ -59,16 +59,16 @@ func ValuesToNamedValues(values []driver.Value) []driver.NamedValue {
 	return result
 }
 
-// NamedValuesToValues transforms a []driver.NamedValue to []driver.Value.
-//
-// @Available since v0.2.0
-func NamedValuesToValues(values []driver.NamedValue) []driver.Value {
-	result := make([]driver.Value, len(values))
-	for i, v := range values {
-		result[i] = v.Value
-	}
-	return result
-}
+// // NamedValuesToValues transforms a []driver.NamedValue to []driver.Value.
+// //
+// // @Available since v0.2.0
+// func NamedValuesToValues(values []driver.NamedValue) []driver.Value {
+// 	result := make([]driver.Value, len(values))
+// 	for i, v := range values {
+// 		result[i] = v.Value
+// 	}
+// 	return result
+// }
 
 // ToAttributeValue marshals a Go value to AWS AttributeValue.
 func ToAttributeValue(value interface{}) (types.AttributeValue, error) {

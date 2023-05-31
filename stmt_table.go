@@ -395,7 +395,7 @@ func (s *StmtAlterTable) Query(_ []driver.Value) (driver.Rows, error) {
 
 // QueryContext implements driver.StmtQueryContext/QueryContext.
 // This function is not implemented, use ExecContext instead.
-func (s *StmtAlterTable) QueryContext(_ []driver.Value) (driver.Rows, error) {
+func (s *StmtAlterTable) QueryContext(_ []driver.NamedValue) (driver.Rows, error) {
 	return nil, errors.New("this operation is not supported, please use ExecContext")
 }
 

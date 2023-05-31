@@ -101,13 +101,11 @@ func (s *StmtSelect) Query(values []driver.Value) (driver.Rows, error) {
 // @Available since v0.2.0
 func (s *StmtSelect) QueryContext(ctx context.Context, values []driver.NamedValue) (driver.Rows, error) {
 	outputFn, err := s.conn.executeContext(ctx, s.Stmt, values)
-	if err == ErrInTx {
-		return &TxResultResultSet{wrap: ResultResultSet{err: err}, outputFn: outputFn}, nil
-	}
-	result := &ResultResultSet{stmtOutput: outputFn()}
-	if err == nil {
-		result.init()
-	}
+	// TODO Query is not supported yet in tx mode
+	// if err == ErrInTx {
+	// 	return &TxResultResultSet{wrap: ResultResultSet{err: err}, outputFn: outputFn}, nil
+	// }
+	result := (&ResultResultSet{stmtOutput: outputFn()}).init()
 	return result, err
 }
 
@@ -139,9 +137,8 @@ func (s *StmtUpdate) Query(values []driver.Value) (driver.Rows, error) {
 // @Available since v0.2.0
 func (s *StmtUpdate) QueryContext(ctx context.Context, values []driver.NamedValue) (driver.Rows, error) {
 	outputFn, err := s.conn.executeContext(ctx, s.Stmt, values)
-	result := &ResultResultSet{stmtOutput: outputFn()}
+	result := (&ResultResultSet{stmtOutput: outputFn()}).init()
 	if err == nil || IsAwsError(err, "ConditionalCheckFailedException") {
-		result.init()
 		err = nil
 	}
 	return result, err
@@ -198,9 +195,8 @@ func (s *StmtDelete) Query(values []driver.Value) (driver.Rows, error) {
 // @Available since v0.2.0
 func (s *StmtDelete) QueryContext(ctx context.Context, values []driver.NamedValue) (driver.Rows, error) {
 	outputFn, err := s.conn.executeContext(ctx, s.Stmt, values)
-	result := &ResultResultSet{stmtOutput: outputFn()}
+	result := (&ResultResultSet{stmtOutput: outputFn()}).init()
 	if err == nil || IsAwsError(err, "ConditionalCheckFailedException") {
-		result.init()
 		err = nil
 	}
 	return result, err

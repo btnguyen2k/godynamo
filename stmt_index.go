@@ -99,7 +99,7 @@ func (s *StmtDescribeLSI) Query(_ []driver.Value) (driver.Rows, error) {
 // QueryContext implements driver.StmtQueryContext/QueryContext.
 //
 // @Available since v0.2.0
-func (s *StmtDescribeLSI) QueryContext(ctx context.Context, _ []driver.Value) (driver.Rows, error) {
+func (s *StmtDescribeLSI) QueryContext(ctx context.Context, _ []driver.NamedValue) (driver.Rows, error) {
 	input := &dynamodb.DescribeTableInput{
 		TableName: &s.tableName,
 	}
