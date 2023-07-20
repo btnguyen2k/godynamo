@@ -11,6 +11,32 @@ import (
 	"github.com/aws/smithy-go"
 )
 
+func TestParsePlaceholders(t *testing.T) {
+	testData := []struct {
+		name   string
+		sql    string
+		number int
+	}{
+		{name: "basic", sql: `SELECT * FROM "table"`, number: 0},
+		{name: "parameterized", sql: `SELECT * FROM "table" WHERE id=?`, number: 1},
+		{name: "parameterized with space", sql: `SELECT * FROM "table" WHERE id = ?`, number: 1},
+		{name: "parameterized with space and new line", sql: `SELECT * FROM "table" WHERE id = ?
+		`, number: 1},
+		{name: "multiple placeholders", sql: `SELECT "Category", "Name" FROM "Forum" WHERE ("Category" IS NULL OR "Category" = ? OR trim("Category") = ?)`, number: 2},
+		{name: "placeholder in string", sql: `SELECT * FROM "table" WHERE id = 'ab?cd'`, number: 0},
+		{name: "placeholder in string with space", sql: `SELECT * FROM "table" WHERE id = 'ab? cd'`, number: 0},
+		{name: "large number of placeholders", sql: `SELECT * FROM "table" WHERE id = ? AND name = ? AND age = ? AND active = ? AND grade = ? AND list = ? AND map = ?`, number: 7},
+		{name: "placeholder inside sql functions", sql: `SELECT * FROM "table" WHERE id = trim(?)`, number: 1},
+	}
+
+	for _, testCase := range testData {
+		num := parsePlaceholders(testCase.sql)
+		if num != testCase.number {
+			t.Fatalf("%s failed: expected %#v placeholders but received %#v", testCase.name, testCase.number, num)
+		}
+	}
+}
+
 func Test_Query_Insert(t *testing.T) {
 	testName := "Test_Query_Insert"
 	db := _openDb(t, testName)

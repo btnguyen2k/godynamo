@@ -13,10 +13,23 @@ import (
 )
 
 var (
-	rePlaceholder = regexp.MustCompile(`(?m)\?\s*[\,\]\}\s]`)
-	reReturning   = regexp.MustCompile(`(?im)\s+RETURNING\s+((ALL\s+OLD)|(MODIFIED\s+OLD)|(ALL\s+NEW)|(MODIFIED\s+NEW))\s+\*\s*$`)
-	reLimit       = regexp.MustCompile(`(?im)\s+LIMIT\s+(\S+)\s*$`)
+	reStringLiteral = regexp.MustCompile(`'[^']*'`)
+	rePlaceholder   = regexp.MustCompile(`\?`)
+	reReturning     = regexp.MustCompile(`(?im)\s+RETURNING\s+((ALL\s+OLD)|(MODIFIED\s+OLD)|(ALL\s+NEW)|(MODIFIED\s+NEW))\s+\*\s*$`)
+	reLimit         = regexp.MustCompile(`(?im)\s+LIMIT\s+(\S+)\s*$`)
 )
+
+// parsePlaceholders returns the number of placeholders in the query
+// e.g "SELECT * FROM table WHERE id = ?" returns 1
+// `SELECT "Category", "Name" FROM "Forum" WHERE ("Category" IS NULL OR "Category" = ? OR trim("Category") = ?) returns 2
+// "SELECT * FROM table WHERE id = 'ab?cd'" returns 0
+func parsePlaceholders(query string) int {
+	// remove string literals before counting placeholders
+	query = reStringLiteral.ReplaceAllString(query, "")
+	matches := rePlaceholder.FindAllString(query, -1)
+
+	return len(matches)
+}
 
 /*----------------------------------------------------------------------*/
 
@@ -26,8 +39,8 @@ type StmtExecutable struct {
 }
 
 func (s *StmtExecutable) parse() error {
-	matches := rePlaceholder.FindAllString(s.query+" ", -1)
-	s.numInput = len(matches)
+	// Parse placeholders
+	s.numInput = parsePlaceholders(s.query)
 	return nil
 }
 
