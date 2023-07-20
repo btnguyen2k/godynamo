@@ -25,18 +25,19 @@ type StmtExecutable struct {
 func (s *StmtExecutable) parse() error {
 	matches := rePlaceholder.FindAllString(s.query+" ", -1)
 	s.numInput = len(matches)
-	// Look for LIMIT keyword
+	// Look for LIMIT keyword and value
 	limitMatch := reLimit.FindStringSubmatch(s.query)
 	if len(limitMatch) > 0 {
-		limitString := limitMatch[1]
-		limit, err := strconv.Atoi(limitString)
+		sLimit, err := strconv.Atoi(limitMatch[1])
 		if err != nil {
-			return fmt.Errorf("invalid LIMIT value <%s>: %s", limitString, err)
+			return fmt.Errorf("error parsing LIMIT value: %s", err)
 		}
-		s.limit = int32(limit)
-		// Remove LIMIT keyword from query
-		s.query = reLimit.ReplaceAllString(s.query, "")
+		s.limit = int32(sLimit)
 	}
+
+	// Remove LIMIT keyword and value from query
+	s.query = reLimit.ReplaceAllString(s.query, "")
+
 	return nil
 }
 

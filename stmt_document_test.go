@@ -10,6 +10,48 @@ import (
 	"github.com/aws/smithy-go"
 )
 
+func Test_Stmt_Select_Parse(t *testing.T) {
+
+	testData := []struct {
+		name     string
+		sql      string
+		afterSql string
+		numInput int
+		limit    int32
+	}{
+		{name: "basic", sql: `SELECT * FROM "table"`, numInput: 0, limit: 0, afterSql: `SELECT * FROM "table"`},
+		{name: "limit", sql: `SELECT * FROM "table" LIMIT 10`, numInput: 0, limit: 10, afterSql: `SELECT * FROM "table"`},
+		{name: "limit with space", sql: `SELECT * FROM "table" LIMIT  10`, numInput: 0, limit: 10, afterSql: `SELECT * FROM "table"`},
+		{name: "limit with space and new line", sql: `SELECT * FROM "table" LIMIT  10
+`, numInput: 0, limit: 10, afterSql: `SELECT * FROM "table"`},
+		{name: "parameterized", sql: `SELECT * FROM "table" WHERE id=?`, numInput: 1, limit: 0, afterSql: `SELECT * FROM "table" WHERE id=?`},
+		{name: "parameterized with space", sql: `SELECT * FROM "table" WHERE id = ?`, numInput: 1, limit: 0, afterSql: `SELECT * FROM "table" WHERE id = ?`},
+		{name: "parameterized with space and new line", sql: `SELECT * FROM "table" WHERE id = ?
+`, numInput: 1, limit: 0, afterSql: `SELECT * FROM "table" WHERE id = ?
+`},
+	}
+
+	for _, testCase := range testData {
+		stmt := Stmt{
+			query: testCase.sql,
+		}
+		sE := StmtExecutable{Stmt: &stmt}
+		err := sE.parse()
+		if err != nil {
+			t.Fatalf("%s failed: %s", testCase.name, err)
+		}
+		if stmt.numInput != testCase.numInput {
+			t.Fatalf("%s failed: expected %#v input parameters but received %#v", testCase.name, testCase.numInput, stmt.numInput)
+		}
+		if stmt.limit != testCase.limit {
+			t.Fatalf("%s failed: expected %#v limit but received %#v", testCase.name, testCase.limit, stmt.limit)
+		}
+		if stmt.query != testCase.afterSql {
+			t.Fatalf("%s failed: expected %#v afterSql but received %#v", testCase.name, testCase.afterSql, stmt.query)
+		}
+	}
+}
+
 func Test_Query_Insert(t *testing.T) {
 	testName := "Test_Query_Insert"
 	db := _openDb(t, testName)
