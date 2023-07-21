@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 func Test_OpenDatabase(t *testing.T) {
@@ -102,4 +104,46 @@ func TestDriver_Close(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
+}
+
+func TestNameFromAttributeValue(t *testing.T) {
+	testCases := []struct {
+		name string
+		av   types.AttributeValue
+		want string
+	}{
+		{
+			name: "string",
+			av:   &types.AttributeValueMemberS{Value: "foo"},
+			want: "S",
+		},
+		{
+			name: "number",
+			av:   &types.AttributeValueMemberN{Value: "123"},
+			want: "N",
+		},
+		{
+			name: "binary",
+			av:   &types.AttributeValueMemberB{Value: []byte("foo")},
+			want: "B",
+		},
+		{
+			name: "string set",
+			av:   &types.AttributeValueMemberSS{Value: []string{"foo", "bar"}},
+			want: "SS",
+		},
+		{
+			name: "number set",
+			av:   &types.AttributeValueMemberNS{Value: []string{"123", "456"}},
+			want: "NS",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := nameFromAttributeValue(tc.av); got != tc.want {
+				t.Errorf("NameFromAttributeValue() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+
 }
