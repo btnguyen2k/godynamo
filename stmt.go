@@ -266,6 +266,9 @@ func (r *ResultResultSet) init() *ResultResultSet {
 	if r.columnTypes == nil {
 		r.columnTypes = make(map[string]reflect.Type)
 	}
+	if r.columnSourceTypes == nil {
+		r.columnSourceTypes = make(map[string]string)
+	}
 	r.count = len(r.stmtOutput.Items)
 	colMap := make(map[string]bool)
 	for _, item := range r.stmtOutput.Items {
