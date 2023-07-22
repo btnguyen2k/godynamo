@@ -128,3 +128,39 @@ func goTypeToDynamodbType(typ reflect.Type) string {
 	}
 	return ""
 }
+
+// nameFromAttributeValue returns the name of the attribute value.
+// e.g.
+// types.AttributeValueMemberB -> "B"
+// types.AttributeValueMemberBOOL -> "BOOL"
+func nameFromAttributeValue(v interface{}) string {
+	// De-reference pointer
+	if reflect.TypeOf(v).Kind() == reflect.Ptr {
+		v = reflect.ValueOf(v).Elem().Interface()
+	}
+
+	switch v.(type) {
+	case types.AttributeValueMemberB:
+		return "B"
+	case types.AttributeValueMemberBOOL:
+		return "BOOL"
+	case types.AttributeValueMemberBS:
+		return "BS"
+	case types.AttributeValueMemberL:
+		return "L"
+	case types.AttributeValueMemberM:
+		return "M"
+	case types.AttributeValueMemberN:
+		return "N"
+	case types.AttributeValueMemberNS:
+		return "NS"
+	case types.AttributeValueMemberNULL:
+		return "NULL"
+	case types.AttributeValueMemberS:
+		return "S"
+	case types.AttributeValueMemberSS:
+		return "SS"
+	}
+	return ""
+
+}

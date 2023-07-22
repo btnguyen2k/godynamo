@@ -250,12 +250,13 @@ func (r *ResultNoResultSet) RowsAffected() (int64, error) {
 
 // ResultResultSet captures the result from statements that expect a ResultSet to be returned.
 type ResultResultSet struct {
-	err         error
-	count       int
-	stmtOutput  *dynamodb.ExecuteStatementOutput
-	cursorCount int
-	columnList  []string
-	columnTypes map[string]reflect.Type
+	err               error
+	count             int
+	stmtOutput        *dynamodb.ExecuteStatementOutput
+	cursorCount       int
+	columnList        []string
+	columnTypes       map[string]reflect.Type
+	columnSourceTypes map[string]string
 }
 
 func (r *ResultResultSet) init() *ResultResultSet {
@@ -264,6 +265,9 @@ func (r *ResultResultSet) init() *ResultResultSet {
 	}
 	if r.columnTypes == nil {
 		r.columnTypes = make(map[string]reflect.Type)
+	}
+	if r.columnSourceTypes == nil {
+		r.columnSourceTypes = make(map[string]string)
 	}
 	r.count = len(r.stmtOutput.Items)
 	colMap := make(map[string]bool)
@@ -274,6 +278,7 @@ func (r *ResultResultSet) init() *ResultResultSet {
 				var value interface{}
 				attributevalue.Unmarshal(av, &value)
 				r.columnTypes[col] = reflect.TypeOf(value)
+				r.columnSourceTypes[col] = nameFromAttributeValue(av)
 			}
 		}
 	}
@@ -298,7 +303,7 @@ func (r *ResultResultSet) ColumnTypeScanType(index int) reflect.Type {
 
 // ColumnTypeDatabaseTypeName implements driver.RowsColumnTypeDatabaseTypeName/ColumnTypeDatabaseTypeName
 func (r *ResultResultSet) ColumnTypeDatabaseTypeName(index int) string {
-	return goTypeToDynamodbType(r.columnTypes[r.columnList[index]])
+	return r.columnSourceTypes[r.columnList[index]]
 }
 
 // Close implements driver.Rows/Close.
