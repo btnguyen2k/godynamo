@@ -1,4 +1,4 @@
-name: godynamo
+name: "godynamo"
 
 on:
   push:

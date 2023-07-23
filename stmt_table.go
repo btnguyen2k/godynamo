@@ -534,18 +534,21 @@ func (s *StmtDescribeTable) QueryContext(ctx context.Context, _ []driver.NamedVa
 		TableName: &s.tableName,
 	}
 	output, err := s.conn.client.DescribeTable(s.conn.ensureContext(ctx), input)
-	result := &RowsDescribeTable{count: 1}
+	result := &RowsDescribeTable{count: 0}
 	if err == nil {
+		result.count = 1
 		js, _ := json.Marshal(output.Table)
 		json.Unmarshal(js, &result.tableInfo)
-		for k := range result.tableInfo {
-			result.columnList = append(result.columnList, k)
+
+		result.columnList = make([]string, 0)
+		result.columnTypes = make(map[string]reflect.Type)
+		result.columnSourceTypes = make(map[string]string)
+		for col, spec := range dynamodbTableSpec {
+			result.columnList = append(result.columnList, col)
+			result.columnTypes[col] = spec.scanType
+			result.columnSourceTypes[col] = spec.srcType
 		}
 		sort.Strings(result.columnList)
-		result.columnTypeList = make([]reflect.Type, len(result.columnList))
-		for i, col := range result.columnList {
-			result.columnTypeList[i] = reflect.TypeOf(result.tableInfo[col])
-		}
 	}
 	if IsAwsError(err, "ResourceNotFoundException") {
 		err = nil
@@ -553,13 +556,45 @@ func (s *StmtDescribeTable) QueryContext(ctx context.Context, _ []driver.NamedVa
 	return result, err
 }
 
+var (
+	dynamodbTableSpec = map[string]struct {
+		scanType reflect.Type
+		srcType  string
+	}{
+		"ArchivalSummary":           {srcType: "M", scanType: typeM},
+		"AttributeDefinitions":      {srcType: "L", scanType: typeL},
+		"BillingModeSummary":        {srcType: "M", scanType: typeM},
+		"CreationDateTime":          {srcType: "S", scanType: typeTime},
+		"DeletionProtectionEnabled": {srcType: "BOOL", scanType: typeBool},
+		"GlobalSecondaryIndexes":    {srcType: "L", scanType: typeL},
+		"GlobalTableVersion":        {srcType: "S", scanType: typeS},
+		"ItemCount":                 {srcType: "N", scanType: typeN},
+		"KeySchema":                 {srcType: "L", scanType: typeL},
+		"LatestStreamArn":           {srcType: "S", scanType: typeS},
+		"LatestStreamLabel":         {srcType: "S", scanType: typeS},
+		"LocalSecondaryIndexes":     {srcType: "L", scanType: typeL},
+		"ProvisionedThroughput":     {srcType: "M", scanType: typeM},
+		"Replicas":                  {srcType: "L", scanType: typeL},
+		"RestoreSummary":            {srcType: "M", scanType: typeM},
+		"SSEDescription":            {srcType: "M", scanType: typeM},
+		"StreamSpecification":       {srcType: "M", scanType: typeM},
+		"TableArn":                  {srcType: "S", scanType: typeS},
+		"TableClassSummary":         {srcType: "M", scanType: typeM},
+		"TableId":                   {srcType: "S", scanType: typeS},
+		"TableName":                 {srcType: "S", scanType: typeS},
+		"TableSizeBytes":            {srcType: "N", scanType: typeN},
+		"TableStatus":               {srcType: "S", scanType: typeS},
+	}
+)
+
 // RowsDescribeTable captures the result from DESCRIBE TABLE statement.
 type RowsDescribeTable struct {
-	count          int
-	columnList     []string
-	columnTypeList []reflect.Type
-	tableInfo      map[string]interface{}
-	cursorCount    int
+	count             int
+	columnList        []string
+	columnTypes       map[string]reflect.Type
+	columnSourceTypes map[string]string
+	tableInfo         map[string]interface{}
+	cursorCount       int
 }
 
 // Columns implements driver.Rows/Columns.
@@ -586,10 +621,12 @@ func (r *RowsDescribeTable) Next(dest []driver.Value) error {
 
 // ColumnTypeScanType implements driver.RowsColumnTypeScanType/ColumnTypeScanType
 func (r *RowsDescribeTable) ColumnTypeScanType(index int) reflect.Type {
-	return r.columnTypeList[index]
+	return r.columnTypes[r.columnList[index]]
 }
 
 // ColumnTypeDatabaseTypeName implements driver.RowsColumnTypeDatabaseTypeName/ColumnTypeDatabaseTypeName
+//
+// @since v0.3.0 ColumnTypeDatabaseTypeName returns DynamoDB's native data types (e.g. B, N, S, SS, NS, BS, BOOL, L, M, NULL).
 func (r *RowsDescribeTable) ColumnTypeDatabaseTypeName(index int) string {
-	return goTypeToDynamodbType(r.columnTypeList[index])
+	return r.columnSourceTypes[r.columnList[index]]
 }
