@@ -9,13 +9,12 @@ updates:
       interval: "weekly"
       day: "sunday"
 
-#  - package-ecosystem: "pip"
-#    directory: "/"
-#    schedule:
-#      interval: "weekly"
-#      day: "sunday"
-#    open-pull-requests-limit: 10
-#    versioning-strategy: increase-if-necessary
-#    ignore:
-#      - dependency-name: "*"
-#        update-types: ["version-update:semver-major"] # do not update to major version as it may contain breaking changes
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    open-pull-requests-limit: 10
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"] # do not update to major version as it may contain breaking changes
