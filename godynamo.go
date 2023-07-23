@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/smithy-go"
+	"github.com/btnguyen2k/consu/reddo"
 )
 
 const (
@@ -38,6 +39,15 @@ var (
 	}
 )
 
+var (
+	typeM    = reflect.TypeOf(make(map[string]interface{}))
+	typeL    = reflect.TypeOf(make([]interface{}, 0))
+	typeS    = reddo.TypeString
+	typeBool = reddo.TypeBool
+	typeN    = reddo.TypeFloat
+	typeTime = reddo.TypeTime
+)
+
 // IsAwsError returns true if err is an AWS-specific error, and it matches awsErrCode.
 func IsAwsError(err error, awsErrCode string) bool {
 	if aerr, ok := err.(*smithy.OperationError); ok {
@@ -58,17 +68,6 @@ func ValuesToNamedValues(values []driver.Value) []driver.NamedValue {
 	}
 	return result
 }
-
-// // NamedValuesToValues transforms a []driver.NamedValue to []driver.Value.
-// //
-// // @Available since v0.2.0
-// func NamedValuesToValues(values []driver.NamedValue) []driver.Value {
-// 	result := make([]driver.Value, len(values))
-// 	for i, v := range values {
-// 		result[i] = v.Value
-// 	}
-// 	return result
-// }
 
 // ToAttributeValue marshals a Go value to AWS AttributeValue.
 func ToAttributeValue(value interface{}) (types.AttributeValue, error) {
@@ -110,32 +109,15 @@ func ToAttributeValue(value interface{}) (types.AttributeValue, error) {
 	return attributevalue.Marshal(value)
 }
 
-func goTypeToDynamodbType(typ reflect.Type) string {
-	if typ == nil {
-		return ""
-	}
-	switch typ.Kind() {
-	case reflect.Bool:
-		return "BOOLEAN"
-	case reflect.String:
-		return "STRING"
-	case reflect.Float32, reflect.Float64:
-		return "NUMBER"
-	case reflect.Array, reflect.Slice:
-		return "ARRAY"
-	case reflect.Map:
-		return "MAP"
-	}
-	return ""
-}
-
 // nameFromAttributeValue returns the name of the attribute value.
+//
 // e.g.
-// types.AttributeValueMemberB -> "B"
-// types.AttributeValueMemberBOOL -> "BOOL"
+//
+//	types.AttributeValueMemberB -> "B"
+//	types.AttributeValueMemberBOOL -> "BOOL"
 func nameFromAttributeValue(v interface{}) string {
 	// De-reference pointer
-	if reflect.TypeOf(v).Kind() == reflect.Ptr {
+	for reflect.TypeOf(v).Kind() == reflect.Ptr {
 		v = reflect.ValueOf(v).Elem().Interface()
 	}
 
@@ -162,5 +144,4 @@ func nameFromAttributeValue(v interface{}) string {
 		return "SS"
 	}
 	return ""
-
 }
