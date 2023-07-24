@@ -4,12 +4,15 @@ import (
 	"context"
 	"database/sql/driver"
 	"errors"
+	"fmt"
 	"regexp"
+	"strconv"
 )
 
 var (
 	rePlaceholder = regexp.MustCompile(`(?m)\?\s*[\,\]\}\s]`)
 	reReturning   = regexp.MustCompile(`(?im)\s+RETURNING\s+((ALL\s+OLD)|(MODIFIED\s+OLD)|(ALL\s+NEW)|(MODIFIED\s+NEW))\s+\*\s*$`)
+	reLimit       = regexp.MustCompile(`(?im)\s+LIMIT\s+(\d+)\s*$`)
 )
 
 /*----------------------------------------------------------------------*/
@@ -22,6 +25,19 @@ type StmtExecutable struct {
 func (s *StmtExecutable) parse() error {
 	matches := rePlaceholder.FindAllString(s.query+" ", -1)
 	s.numInput = len(matches)
+	// Look for LIMIT keyword and value
+	limitMatch := reLimit.FindStringSubmatch(s.query)
+	if len(limitMatch) > 0 {
+		sLimit, err := strconv.Atoi(limitMatch[1])
+		if err != nil {
+			return fmt.Errorf("error parsing LIMIT value: %s", err)
+		}
+		s.limit = int32(sLimit)
+	}
+
+	// Remove LIMIT keyword and value from query
+	s.query = reLimit.ReplaceAllString(s.query, "")
+
 	return nil
 }
 

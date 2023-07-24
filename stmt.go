@@ -201,6 +201,7 @@ type Stmt struct {
 	query    string // the SQL query
 	conn     *Conn  // the connection that this prepared statement is bound to
 	numInput int    // number of placeholder parameters
+	limit    int32  // limit for SELECT statement
 	withOpts map[string]OptStrings
 }
 
