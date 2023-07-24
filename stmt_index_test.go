@@ -377,3 +377,90 @@ func Test_Exec_DropGSI(t *testing.T) {
 		})
 	}
 }
+
+func TestRowsDescribeIndex_ColumnTypeDatabaseTypeName_LSI(t *testing.T) {
+	testName := "TestRowsDescribeIndex_ColumnTypeDatabaseTypeName_LSI"
+	db := _openDb(t, testName)
+	_initTest(db)
+	defer db.Close()
+
+	expected := map[string]struct {
+		scanType reflect.Type
+		srcType  string
+	}{
+		"IndexName":      {srcType: "S", scanType: typeS},
+		"KeySchema":      {srcType: "L", scanType: typeL},
+		"Projection":     {srcType: "M", scanType: typeM},
+		"IndexSizeBytes": {srcType: "N", scanType: typeN},
+		"ItemCount":      {srcType: "N", scanType: typeN},
+		"IndexArn":       {srcType: "S", scanType: typeS},
+	}
+
+	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS tbltest WITH PK=app:string WITH SK=user:string WITH LSI=idxbrowser:browser:string:*`)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/createTable", err)
+	}
+	dbresult, err := db.Query(`DESCRIBE LSI idxbrowser ON tbltest`)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/describeLSI", err)
+	}
+	cols, _ := dbresult.Columns()
+	colTypes, _ := dbresult.ColumnTypes()
+	for i, col := range cols {
+		srcType := colTypes[i].DatabaseTypeName()
+		if expected[col].srcType != srcType {
+			t.Fatalf("%s failed: expected column <%s> to be %s but received %s", testName, col, expected[col].srcType, srcType)
+		}
+		scanType := colTypes[i].ScanType()
+		if expected[col].scanType != scanType {
+			t.Fatalf("%s failed: expected column <%s> to be %s but received %s", testName, col, expected[col].scanType, scanType)
+		}
+	}
+}
+
+func TestRowsDescribeIndex_ColumnTypeDatabaseTypeName_GSI(t *testing.T) {
+	testName := "TestRowsDescribeIndex_ColumnTypeDatabaseTypeName_GSI"
+	db := _openDb(t, testName)
+	_initTest(db)
+	defer db.Close()
+
+	expected := map[string]struct {
+		scanType reflect.Type
+		srcType  string
+	}{
+		"Backfilling":           {srcType: "BOOL", scanType: typeBool},
+		"IndexArn":              {srcType: "S", scanType: typeS},
+		"IndexName":             {srcType: "S", scanType: typeS},
+		"IndexSizeBytes":        {srcType: "N", scanType: typeN},
+		"IndexStatus":           {srcType: "S", scanType: typeS},
+		"ItemCount":             {srcType: "N", scanType: typeN},
+		"KeySchema":             {srcType: "L", scanType: typeL},
+		"Projection":            {srcType: "M", scanType: typeM},
+		"ProvisionedThroughput": {srcType: "M", scanType: typeM},
+	}
+
+	_, err := db.Exec(`CREATE TABLE tbltest WITH pk=id:string WITH rcu=1 WITH wcu=2`)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/createTable", err)
+	}
+	_, err = db.Exec(`CREATE GSI idxbrowser ON tbltest WITH pk=os:binary WITH SK=version:string WITH rcu=5 WITH wcu=6 WITH projection=*`)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/createGSI", err)
+	}
+	dbresult, err := db.Query(`DESCRIBE GSI idxbrowser ON tbltest`)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/describeGSI", err)
+	}
+	cols, _ := dbresult.Columns()
+	colTypes, _ := dbresult.ColumnTypes()
+	for i, col := range cols {
+		srcType := colTypes[i].DatabaseTypeName()
+		if expected[col].srcType != srcType {
+			t.Fatalf("%s failed: expected column <%s> to be %s but received %s", testName, col, expected[col].srcType, srcType)
+		}
+		scanType := colTypes[i].ScanType()
+		if expected[col].scanType != scanType {
+			t.Fatalf("%s failed: expected column <%s> to be %s but received %s", testName, col, expected[col].scanType, scanType)
+		}
+	}
+}

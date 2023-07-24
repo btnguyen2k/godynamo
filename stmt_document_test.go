@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws/transport/http"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/smithy-go"
 )
 
@@ -87,6 +88,10 @@ func Test_Exec_Insert(t *testing.T) {
 			execResult, err := db.Exec(testCase.sql, testCase.params...)
 			if err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/exec", err)
+			}
+			_, err = execResult.LastInsertId()
+			if err == nil || strings.Index(err.Error(), "not supported") < 0 {
+				t.Fatalf("%s failed: expected 'not support' error, but received %s", testName+"/"+testCase.name+"/last_insert_id", err)
 			}
 			affectedRows, err := execResult.RowsAffected()
 			if err != nil {
@@ -359,5 +364,69 @@ func Test_Query_Update(t *testing.T) {
 	rows2, _ := _fetchAllRows(dbrows2)
 	if len(rows2) != 0 {
 		t.Fatalf("%s failed: expected 0 affected row, but received %#v", testName, len(rows2))
+	}
+}
+
+func TestResultResultSet_ColumnTypeDatabaseTypeName(t *testing.T) {
+	testName := "TestResultResultSet_ColumnTypeDatabaseTypeName"
+	db := _openDb(t, testName)
+	defer db.Close()
+	_initTest(db)
+
+	db.Exec(`CREATE TABLE tbltest WITH pk=id:string WITH rcu=1 WITH wcu=1`)
+	testData := map[string]struct {
+		val interface{}
+		typ string
+	}{
+		"val_s":    {val: "a string", typ: "S"},
+		"val_s_1":  {val: types.AttributeValueMemberS{Value: "a string"}, typ: "S"},
+		"val_n":    {val: 123, typ: "N"},
+		"val_n_1":  {val: types.AttributeValueMemberN{Value: "123.0"}, typ: "N"},
+		"val_b":    {val: []byte("a binary"), typ: "B"},
+		"val_b_1":  {val: types.AttributeValueMemberB{Value: []byte("a binary")}, typ: "B"},
+		"val_ss":   {val: types.AttributeValueMemberSS{Value: []string{"a", "b", "c"}}, typ: "SS"},
+		"val_ns":   {val: types.AttributeValueMemberNS{Value: []string{"1.2", "2.3", "3.4"}}, typ: "NS"},
+		"val_bs":   {val: [][]byte{[]byte("a"), []byte("b"), []byte("c")}, typ: "BS"},
+		"val_bs_1": {val: types.AttributeValueMemberBS{Value: [][]byte{[]byte("a"), []byte("b"), []byte("c")}}, typ: "BS"},
+		"val_m":    {val: map[string]interface{}{"a": 1, "b": "2", "c": true, "d": []byte("4")}, typ: "M"},
+		"val_m_1": {val: types.AttributeValueMemberM{Value: map[string]types.AttributeValue{
+			"a": ToAttributeValueUnsafe(1), "b": ToAttributeValueUnsafe("2"), "c": ToAttributeValueUnsafe(true), "d": ToAttributeValueUnsafe([]byte("4"))},
+		}, typ: "M"},
+		"val_l": {val: []interface{}{1.2, "3", false, []byte("4")}, typ: "L"},
+		"val_l_1": {val: types.AttributeValueMemberL{Value: []types.AttributeValue{
+			ToAttributeValueUnsafe(1.2), ToAttributeValueUnsafe("3"), ToAttributeValueUnsafe(false), ToAttributeValueUnsafe([]byte("4"))},
+		}, typ: "L"},
+		"val_null":   {val: nil, typ: "NULL"},
+		"val_null_1": {val: types.AttributeValueMemberNULL{Value: true}, typ: "NULL"},
+		"val_bool":   {val: true, typ: "BOOL"},
+		"val_bool_1": {val: types.AttributeValueMemberBOOL{Value: false}, typ: "BOOL"},
+	}
+	sql := `INSERT INTO "tbltest" VALUE {'id': 'myid'`
+	params := make([]interface{}, 0)
+	for col, data := range testData {
+		sql += fmt.Sprintf(", '%s': ?", col)
+		params = append(params, data.val)
+	}
+	sql += "}"
+	_, err := db.Exec(sql, params...)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/insert", err)
+	}
+
+	dbrows, err := db.Query(`SELECT * FROM "tbltest" WHERE id=?`, "myid")
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/select", err)
+	}
+	cols, _ := dbrows.Columns()
+	colTypes, _ := dbrows.ColumnTypes()
+	for i, colType := range colTypes {
+		col := cols[i]
+		if col == "id" {
+			continue
+		}
+		data := testData[col]
+		if colType.DatabaseTypeName() != data.typ {
+			t.Fatalf("%s failed: expected column <%s> to be type %s but received %s", testName+"/col_type", col, data.typ, colType.DatabaseTypeName())
+		}
 	}
 }

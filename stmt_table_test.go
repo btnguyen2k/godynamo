@@ -1,6 +1,7 @@
 package godynamo
 
 import (
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -17,8 +18,8 @@ func Test_Query_CreateTable(t *testing.T) {
 	}
 }
 
-func Test_Exec_CreateTable(t *testing.T) {
-	testName := "Test_Exec_CreateTable"
+func Test_Exec_CreateTable_Query_DescribeTable(t *testing.T) {
+	testName := "Test_Exec_CreateTable_Query_DescribeTable"
 	db := _openDb(t, testName)
 	defer db.Close()
 	_initTest(db)
@@ -231,5 +232,62 @@ func Test_Exec_DescribeTable(t *testing.T) {
 	_, err := db.Exec("DESCRIBE TABLE tbltemp")
 	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
 		t.Fatalf("%s failed: expected 'not support' error, but received %#v", testName, err)
+	}
+}
+
+func TestRowsDescribeTable_ColumnTypeDatabaseTypeName(t *testing.T) {
+	testName := "TestRowsDescribeTable_ColumnTypeDatabaseTypeName"
+	db := _openDb(t, testName)
+	defer db.Close()
+	_initTest(db)
+
+	expected := map[string]struct {
+		scanType reflect.Type
+		srcType  string
+	}{
+		"ArchivalSummary":           {srcType: "M", scanType: typeM},
+		"AttributeDefinitions":      {srcType: "L", scanType: typeL},
+		"BillingModeSummary":        {srcType: "M", scanType: typeM},
+		"CreationDateTime":          {srcType: "S", scanType: typeTime},
+		"DeletionProtectionEnabled": {srcType: "BOOL", scanType: typeBool},
+		"GlobalSecondaryIndexes":    {srcType: "L", scanType: typeL},
+		"GlobalTableVersion":        {srcType: "S", scanType: typeS},
+		"ItemCount":                 {srcType: "N", scanType: typeN},
+		"KeySchema":                 {srcType: "L", scanType: typeL},
+		"LatestStreamArn":           {srcType: "S", scanType: typeS},
+		"LatestStreamLabel":         {srcType: "S", scanType: typeS},
+		"LocalSecondaryIndexes":     {srcType: "L", scanType: typeL},
+		"ProvisionedThroughput":     {srcType: "M", scanType: typeM},
+		"Replicas":                  {srcType: "L", scanType: typeL},
+		"RestoreSummary":            {srcType: "M", scanType: typeM},
+		"SSEDescription":            {srcType: "M", scanType: typeM},
+		"StreamSpecification":       {srcType: "M", scanType: typeM},
+		"TableArn":                  {srcType: "S", scanType: typeS},
+		"TableClassSummary":         {srcType: "M", scanType: typeM},
+		"TableId":                   {srcType: "S", scanType: typeS},
+		"TableName":                 {srcType: "S", scanType: typeS},
+		"TableSizeBytes":            {srcType: "N", scanType: typeN},
+		"TableStatus":               {srcType: "S", scanType: typeS},
+	}
+
+	_, err := db.Exec(`CREATE TABLE tbltest WITH PK=id:string`)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/createTable", err)
+	}
+	dbresult, err := db.Query(`DESCRIBE TABLE tbltest`)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/describeTable", err)
+	}
+	cols, _ := dbresult.Columns()
+	colTypes, _ := dbresult.ColumnTypes()
+	for i, col := range cols {
+		srcType := colTypes[i].DatabaseTypeName()
+		if expected[col].srcType != srcType {
+			t.Fatalf("%s failed: expected column <%s> to be %s but received %s", testName, col, expected[col].srcType, srcType)
+		}
+		scanType := colTypes[i].ScanType()
+		if expected[col].scanType != scanType {
+			t.Fatalf("%s failed: expected column <%s> to be %s but received %s", testName, col, expected[col].scanType, scanType)
+		}
 	}
 }

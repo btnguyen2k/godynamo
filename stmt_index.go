@@ -16,13 +16,43 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
+var (
+	dynamodbLSISpec = map[string]struct {
+		scanType reflect.Type
+		srcType  string
+	}{
+		"IndexName":      {srcType: "S", scanType: typeS},
+		"KeySchema":      {srcType: "L", scanType: typeL},
+		"Projection":     {srcType: "M", scanType: typeM},
+		"IndexSizeBytes": {srcType: "N", scanType: typeN},
+		"ItemCount":      {srcType: "N", scanType: typeN},
+		"IndexArn":       {srcType: "S", scanType: typeS},
+	}
+
+	dynamodbGSISpec = map[string]struct {
+		scanType reflect.Type
+		srcType  string
+	}{
+		"Backfilling":           {srcType: "BOOL", scanType: typeBool},
+		"IndexArn":              {srcType: "S", scanType: typeS},
+		"IndexName":             {srcType: "S", scanType: typeS},
+		"IndexSizeBytes":        {srcType: "N", scanType: typeN},
+		"IndexStatus":           {srcType: "S", scanType: typeS},
+		"ItemCount":             {srcType: "N", scanType: typeN},
+		"KeySchema":             {srcType: "L", scanType: typeL},
+		"Projection":            {srcType: "M", scanType: typeM},
+		"ProvisionedThroughput": {srcType: "M", scanType: typeM},
+	}
+)
+
 // RowsDescribeIndex captures the result from DESCRIBE LSI or DESCRIBE GSI statement.
 type RowsDescribeIndex struct {
-	count          int
-	columnList     []string
-	columnTypeList []reflect.Type
-	indexInfo      map[string]interface{}
-	cursorCount    int
+	count             int
+	columnList        []string
+	columnTypes       map[string]reflect.Type
+	columnSourceTypes map[string]string
+	indexInfo         map[string]interface{}
+	cursorCount       int
 }
 
 // Columns implements driver.Rows/Columns.
@@ -49,12 +79,14 @@ func (r *RowsDescribeIndex) Next(dest []driver.Value) error {
 
 // ColumnTypeScanType implements driver.RowsColumnTypeScanType/ColumnTypeScanType
 func (r *RowsDescribeIndex) ColumnTypeScanType(index int) reflect.Type {
-	return r.columnTypeList[index]
+	return r.columnTypes[r.columnList[index]]
 }
 
 // ColumnTypeDatabaseTypeName implements driver.RowsColumnTypeDatabaseTypeName/ColumnTypeDatabaseTypeName
+//
+// @since v0.3.0 ColumnTypeDatabaseTypeName returns DynamoDB's native data types (e.g. B, N, S, SS, NS, BS, BOOL, L, M, NULL).
 func (r *RowsDescribeIndex) ColumnTypeDatabaseTypeName(index int) string {
-	return goTypeToDynamodbType(r.columnTypeList[index])
+	return r.columnSourceTypes[r.columnList[index]]
 }
 
 /*----------------------------------------------------------------------*/
@@ -111,14 +143,16 @@ func (s *StmtDescribeLSI) QueryContext(ctx context.Context, _ []driver.NamedValu
 				result.count = 1
 				js, _ := json.Marshal(lsi)
 				json.Unmarshal(js, &result.indexInfo)
-				for k := range result.indexInfo {
-					result.columnList = append(result.columnList, k)
+
+				result.columnList = make([]string, 0)
+				result.columnTypes = make(map[string]reflect.Type)
+				result.columnSourceTypes = make(map[string]string)
+				for col, spec := range dynamodbLSISpec {
+					result.columnList = append(result.columnList, col)
+					result.columnTypes[col] = spec.scanType
+					result.columnSourceTypes[col] = spec.srcType
 				}
 				sort.Strings(result.columnList)
-				result.columnTypeList = make([]reflect.Type, len(result.columnList))
-				for i, col := range result.columnList {
-					result.columnTypeList[i] = reflect.TypeOf(result.indexInfo[col])
-				}
 				break
 			}
 		}
@@ -352,14 +386,16 @@ func (s *StmtDescribeGSI) QueryContext(ctx context.Context, _ []driver.NamedValu
 				result.count = 1
 				js, _ := json.Marshal(gsi)
 				json.Unmarshal(js, &result.indexInfo)
-				for k := range result.indexInfo {
-					result.columnList = append(result.columnList, k)
+
+				result.columnList = make([]string, 0)
+				result.columnTypes = make(map[string]reflect.Type)
+				result.columnSourceTypes = make(map[string]string)
+				for col, spec := range dynamodbGSISpec {
+					result.columnList = append(result.columnList, col)
+					result.columnTypes[col] = spec.scanType
+					result.columnSourceTypes[col] = spec.srcType
 				}
 				sort.Strings(result.columnList)
-				result.columnTypeList = make([]reflect.Type, len(result.columnList))
-				for i, col := range result.columnList {
-					result.columnTypeList[i] = reflect.TypeOf(result.indexInfo[col])
-				}
 				break
 			}
 		}
