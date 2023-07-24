@@ -115,8 +115,10 @@ func (c *Conn) executeContext(ctx context.Context, stmt *Stmt, values []driver.N
 	input := &dynamodb.ExecuteStatementInput{
 		Statement:              &stmt.query,
 		ReturnConsumedCapacity: types.ReturnConsumedCapacityTotal,
-		Parameters:             params,
 		Limit:                  stmt.limit,
+	}
+	if len(params) > 0 {
+		input.Parameters = params
 	}
 	output, err := c.client.ExecuteStatement(c.ensureContext(ctx), input)
 	return func() *dynamodb.ExecuteStatementOutput {
