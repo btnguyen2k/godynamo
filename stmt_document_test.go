@@ -11,48 +11,6 @@ import (
 	"github.com/aws/smithy-go"
 )
 
-func Test_Stmt_Select_Parse(t *testing.T) {
-
-	testData := []struct {
-		name     string
-		sql      string
-		afterSql string
-		numInput int
-		limit    int32
-	}{
-		{name: "basic", sql: `SELECT * FROM "table"`, numInput: 0, limit: 0, afterSql: `SELECT * FROM "table"`},
-		{name: "limit", sql: `SELECT * FROM "table" LIMIT 10`, numInput: 0, limit: 10, afterSql: `SELECT * FROM "table"`},
-		{name: "limit with space", sql: `SELECT * FROM "table" LIMIT  10`, numInput: 0, limit: 10, afterSql: `SELECT * FROM "table"`},
-		{name: "limit with space and new line", sql: `SELECT * FROM "table" LIMIT  10
-`, numInput: 0, limit: 10, afterSql: `SELECT * FROM "table"`},
-		{name: "parameterized", sql: `SELECT * FROM "table" WHERE id=?`, numInput: 1, limit: 0, afterSql: `SELECT * FROM "table" WHERE id=?`},
-		{name: "parameterized with space", sql: `SELECT * FROM "table" WHERE id = ?`, numInput: 1, limit: 0, afterSql: `SELECT * FROM "table" WHERE id = ?`},
-		{name: "parameterized with space and new line", sql: `SELECT * FROM "table" WHERE id = ?
-`, numInput: 1, limit: 0, afterSql: `SELECT * FROM "table" WHERE id = ?
-`},
-	}
-
-	for _, testCase := range testData {
-		stmt := Stmt{
-			query: testCase.sql,
-		}
-		sE := StmtExecutable{Stmt: &stmt}
-		err := sE.parse()
-		if err != nil {
-			t.Fatalf("%s failed: %s", testCase.name, err)
-		}
-		if stmt.numInput != testCase.numInput {
-			t.Fatalf("%s failed: expected %#v input parameters but received %#v", testCase.name, testCase.numInput, stmt.numInput)
-		}
-		if stmt.limit != testCase.limit {
-			t.Fatalf("%s failed: expected %#v limit but received %#v", testCase.name, testCase.limit, stmt.limit)
-		}
-		if stmt.query != testCase.afterSql {
-			t.Fatalf("%s failed: expected %#v afterSql but received %#v", testCase.name, testCase.afterSql, stmt.query)
-		}
-	}
-}
-
 func Test_Query_Insert(t *testing.T) {
 	testName := "Test_Query_Insert"
 	db := _openDb(t, testName)
@@ -150,6 +108,53 @@ func Test_Query_Select(t *testing.T) {
 	}
 	if !reflect.DeepEqual(rows[0], expectedRow) {
 		t.Fatalf("%s failed:\nexpected %#v\nreceived %#v", testName, expectedRow, rows)
+	}
+}
+
+func Test_Query_Select_withLimit(t *testing.T) {
+	testName := "Test_Query_Select_withLimit"
+	db := _openDb(t, testName)
+	defer db.Close()
+	_initTest(db)
+
+	_, err := db.Exec(`CREATE TABLE tbltest WITH PK=app:string WITH SK=user:string WITH rcu=100 WITH wcu=100`)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	insData := [][]interface{}{
+		{"app", "user1", "Linux", true, 1.0},
+		{"app", "user2", "Windows", false, 2.3},
+		{"app", "user3", "MacOS", true, 4.56},
+	}
+	for _, data := range insData {
+		_, err = db.Exec(`INSERT INTO "tbltest" VALUE {'app': ?, 'user': ?, 'os': ?, 'active': ?, 'duration': ?}`, data...)
+		if err != nil {
+			t.Fatalf("%s failed: %s", testName+"/insert", err)
+		}
+	}
+
+	dbresult, err := db.Query(`SELECT * FROM "tbltest" WHERE app=?`, "app")
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/select", err)
+	}
+	allRows, err := _fetchAllRows(dbresult)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	if len(allRows) != len(insData) {
+		t.Fatalf("%s failed: expected %#v row but received %#v", testName+"/select", len(insData), len(allRows))
+	}
+
+	dbresult, err = db.Query(`SELECT * FROM "tbltest" WHERE app=? LIMIT 2`, "app")
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/select", err)
+	}
+	limitRows, err := _fetchAllRows(dbresult)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	if len(limitRows) != 2 {
+		t.Fatalf("%s failed: expected %#v row but received %#v", testName+"/select", 2, len(limitRows))
 	}
 }
 
