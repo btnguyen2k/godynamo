@@ -4,12 +4,18 @@ import (
 	"context"
 	"database/sql/driver"
 	"errors"
+	"fmt"
 	"regexp"
+	"strconv"
+	"strings"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
 )
 
 var (
 	rePlaceholder = regexp.MustCompile(`(?m)\?\s*[\,\]\}\s]`)
 	reReturning   = regexp.MustCompile(`(?im)\s+RETURNING\s+((ALL\s+OLD)|(MODIFIED\s+OLD)|(ALL\s+NEW)|(MODIFIED\s+NEW))\s+\*\s*$`)
+	reLimit       = regexp.MustCompile(`(?im)\s+LIMIT\s+(\S+)\s*$`)
 )
 
 /*----------------------------------------------------------------------*/
@@ -75,8 +81,28 @@ func (s *StmtInsert) ExecContext(ctx context.Context, values []driver.NamedValue
 // StmtSelect implements "SELECT" statement.
 //
 // Syntax: follow "PartiQL select statements for DynamoDB" https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.select.html
+//
+// @Since v0.3.0 support LIMIT clause
 type StmtSelect struct {
 	*StmtExecutable
+}
+
+func (s *StmtSelect) parse() error {
+	// Look for LIMIT keyword and value
+	limitMatch := reLimit.FindStringSubmatch(s.query)
+	if len(limitMatch) > 0 {
+		sLimit, err := strconv.Atoi(strings.TrimSpace(limitMatch[1]))
+		if err != nil {
+			return fmt.Errorf("error parsing LIMIT value: %s", err)
+		}
+		if sLimit <= 0 {
+			return fmt.Errorf("invalid LIMIT value: %s", limitMatch[1])
+		}
+		s.limit = aws.Int32(int32(sLimit))
+		// Remove LIMIT keyword and value from query
+		s.query = strings.TrimSpace(reLimit.ReplaceAllString(s.query, ""))
+	}
+	return s.StmtExecutable.parse()
 }
 
 // Exec implements driver.Stmt/Exec.

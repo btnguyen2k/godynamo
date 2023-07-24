@@ -44,6 +44,12 @@ Sample result:
 |------|---|----|
 |true|"frontend"|"user1"|
 
+> Since [v0.3.0](RELEASE-NOTES.md), `godynamodb` supports `LIMIT` clause for `SELECT` statement. Example:
+> 
+>       dbrows, err := db.Query(`SELECT * FROM "session" WHERE app='frontend' LIMIT 10`)
+>
+> Note: the value for `LIMIT` must be a positive integer.
+
 ## UPDATE
 
 Syntax: [PartiQL update statements for DynamoDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.update.html)

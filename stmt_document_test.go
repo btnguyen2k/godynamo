@@ -47,6 +47,10 @@ func Test_Exec_Insert(t *testing.T) {
 			if err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/exec", err)
 			}
+			_, err = execResult.LastInsertId()
+			if err == nil || strings.Index(err.Error(), "not supported") < 0 {
+				t.Fatalf("%s failed: expected 'not support' error, but received %s", testName+"/"+testCase.name+"/last_insert_id", err)
+			}
 			affectedRows, err := execResult.RowsAffected()
 			if err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/rows_affected", err)
@@ -104,6 +108,53 @@ func Test_Query_Select(t *testing.T) {
 	}
 	if !reflect.DeepEqual(rows[0], expectedRow) {
 		t.Fatalf("%s failed:\nexpected %#v\nreceived %#v", testName, expectedRow, rows)
+	}
+}
+
+func Test_Query_Select_withLimit(t *testing.T) {
+	testName := "Test_Query_Select_withLimit"
+	db := _openDb(t, testName)
+	defer db.Close()
+	_initTest(db)
+
+	_, err := db.Exec(`CREATE TABLE tbltest WITH PK=app:string WITH SK=user:string WITH rcu=100 WITH wcu=100`)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	insData := [][]interface{}{
+		{"app", "user1", "Linux", true, 1.0},
+		{"app", "user2", "Windows", false, 2.3},
+		{"app", "user3", "MacOS", true, 4.56},
+	}
+	for _, data := range insData {
+		_, err = db.Exec(`INSERT INTO "tbltest" VALUE {'app': ?, 'user': ?, 'os': ?, 'active': ?, 'duration': ?}`, data...)
+		if err != nil {
+			t.Fatalf("%s failed: %s", testName+"/insert", err)
+		}
+	}
+
+	dbresult, err := db.Query(`SELECT * FROM "tbltest" WHERE app=?`, "app")
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/select", err)
+	}
+	allRows, err := _fetchAllRows(dbresult)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	if len(allRows) != len(insData) {
+		t.Fatalf("%s failed: expected %#v row but received %#v", testName+"/select", len(insData), len(allRows))
+	}
+
+	dbresult, err = db.Query(`SELECT * FROM "tbltest" WHERE app=? LIMIT 2`, "app")
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/select", err)
+	}
+	limitRows, err := _fetchAllRows(dbresult)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	if len(limitRows) != 2 {
+		t.Fatalf("%s failed: expected %#v row but received %#v", testName+"/select", 2, len(limitRows))
 	}
 }
 
@@ -333,16 +384,27 @@ func TestResultResultSet_ColumnTypeDatabaseTypeName(t *testing.T) {
 		typ string
 	}{
 		"val_s":    {val: "a string", typ: "S"},
+		"val_s_1":  {val: types.AttributeValueMemberS{Value: "a string"}, typ: "S"},
 		"val_n":    {val: 123, typ: "N"},
+		"val_n_1":  {val: types.AttributeValueMemberN{Value: "123.0"}, typ: "N"},
 		"val_b":    {val: []byte("a binary"), typ: "B"},
+		"val_b_1":  {val: types.AttributeValueMemberB{Value: []byte("a binary")}, typ: "B"},
 		"val_ss":   {val: types.AttributeValueMemberSS{Value: []string{"a", "b", "c"}}, typ: "SS"},
 		"val_ns":   {val: types.AttributeValueMemberNS{Value: []string{"1.2", "2.3", "3.4"}}, typ: "NS"},
-		"val_bs1":  {val: [][]byte{[]byte("a"), []byte("b"), []byte("c")}, typ: "BS"},
-		"val_bs2":  {val: types.AttributeValueMemberBS{Value: [][]byte{[]byte("a"), []byte("b"), []byte("c")}}, typ: "BS"},
+		"val_bs":   {val: [][]byte{[]byte("a"), []byte("b"), []byte("c")}, typ: "BS"},
+		"val_bs_1": {val: types.AttributeValueMemberBS{Value: [][]byte{[]byte("a"), []byte("b"), []byte("c")}}, typ: "BS"},
 		"val_m":    {val: map[string]interface{}{"a": 1, "b": "2", "c": true, "d": []byte("4")}, typ: "M"},
-		"val_l":    {val: []interface{}{1.2, "3", false, []byte("4")}, typ: "L"},
-		"val_null": {val: nil, typ: "NULL"},
-		"val_bool": {val: true, typ: "BOOL"},
+		"val_m_1": {val: types.AttributeValueMemberM{Value: map[string]types.AttributeValue{
+			"a": ToAttributeValueUnsafe(1), "b": ToAttributeValueUnsafe("2"), "c": ToAttributeValueUnsafe(true), "d": ToAttributeValueUnsafe([]byte("4"))},
+		}, typ: "M"},
+		"val_l": {val: []interface{}{1.2, "3", false, []byte("4")}, typ: "L"},
+		"val_l_1": {val: types.AttributeValueMemberL{Value: []types.AttributeValue{
+			ToAttributeValueUnsafe(1.2), ToAttributeValueUnsafe("3"), ToAttributeValueUnsafe(false), ToAttributeValueUnsafe([]byte("4"))},
+		}, typ: "L"},
+		"val_null":   {val: nil, typ: "NULL"},
+		"val_null_1": {val: types.AttributeValueMemberNULL{Value: true}, typ: "NULL"},
+		"val_bool":   {val: true, typ: "BOOL"},
+		"val_bool_1": {val: types.AttributeValueMemberBOOL{Value: false}, typ: "BOOL"},
 	}
 	sql := `INSERT INTO "tbltest" VALUE {'id': 'myid'`
 	params := make([]interface{}, 0)
