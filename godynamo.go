@@ -69,11 +69,16 @@ func ValuesToNamedValues(values []driver.Value) []driver.NamedValue {
 	return result
 }
 
+// ToAttributeValueUnsafe marshals a Go value to AWS AttributeValue, ignoring error.
+//
+// @Available since v0.2.0
+func ToAttributeValueUnsafe(value interface{}) types.AttributeValue {
+	av, _ := ToAttributeValue(value)
+	return av
+}
+
 // ToAttributeValue marshals a Go value to AWS AttributeValue.
 func ToAttributeValue(value interface{}) (types.AttributeValue, error) {
-	if av, ok := value.(types.AttributeValue); ok {
-		return av, nil
-	}
 	switch value.(type) {
 	case types.AttributeValueMemberB:
 		v := value.(types.AttributeValueMemberB)

@@ -47,6 +47,10 @@ func Test_Exec_Insert(t *testing.T) {
 			if err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/exec", err)
 			}
+			_, err = execResult.LastInsertId()
+			if err == nil || strings.Index(err.Error(), "not supported") < 0 {
+				t.Fatalf("%s failed: expected 'not support' error, but received %s", testName+"/"+testCase.name+"/last_insert_id", err)
+			}
 			affectedRows, err := execResult.RowsAffected()
 			if err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/rows_affected", err)
@@ -333,16 +337,27 @@ func TestResultResultSet_ColumnTypeDatabaseTypeName(t *testing.T) {
 		typ string
 	}{
 		"val_s":    {val: "a string", typ: "S"},
+		"val_s_1":  {val: types.AttributeValueMemberS{Value: "a string"}, typ: "S"},
 		"val_n":    {val: 123, typ: "N"},
+		"val_n_1":  {val: types.AttributeValueMemberN{Value: "123.0"}, typ: "N"},
 		"val_b":    {val: []byte("a binary"), typ: "B"},
+		"val_b_1":  {val: types.AttributeValueMemberB{Value: []byte("a binary")}, typ: "B"},
 		"val_ss":   {val: types.AttributeValueMemberSS{Value: []string{"a", "b", "c"}}, typ: "SS"},
 		"val_ns":   {val: types.AttributeValueMemberNS{Value: []string{"1.2", "2.3", "3.4"}}, typ: "NS"},
-		"val_bs1":  {val: [][]byte{[]byte("a"), []byte("b"), []byte("c")}, typ: "BS"},
-		"val_bs2":  {val: types.AttributeValueMemberBS{Value: [][]byte{[]byte("a"), []byte("b"), []byte("c")}}, typ: "BS"},
+		"val_bs":   {val: [][]byte{[]byte("a"), []byte("b"), []byte("c")}, typ: "BS"},
+		"val_bs_1": {val: types.AttributeValueMemberBS{Value: [][]byte{[]byte("a"), []byte("b"), []byte("c")}}, typ: "BS"},
 		"val_m":    {val: map[string]interface{}{"a": 1, "b": "2", "c": true, "d": []byte("4")}, typ: "M"},
-		"val_l":    {val: []interface{}{1.2, "3", false, []byte("4")}, typ: "L"},
-		"val_null": {val: nil, typ: "NULL"},
-		"val_bool": {val: true, typ: "BOOL"},
+		"val_m_1": {val: types.AttributeValueMemberM{Value: map[string]types.AttributeValue{
+			"a": ToAttributeValueUnsafe(1), "b": ToAttributeValueUnsafe("2"), "c": ToAttributeValueUnsafe(true), "d": ToAttributeValueUnsafe([]byte("4"))},
+		}, typ: "M"},
+		"val_l": {val: []interface{}{1.2, "3", false, []byte("4")}, typ: "L"},
+		"val_l_1": {val: types.AttributeValueMemberL{Value: []types.AttributeValue{
+			ToAttributeValueUnsafe(1.2), ToAttributeValueUnsafe("3"), ToAttributeValueUnsafe(false), ToAttributeValueUnsafe([]byte("4"))},
+		}, typ: "L"},
+		"val_null":   {val: nil, typ: "NULL"},
+		"val_null_1": {val: types.AttributeValueMemberNULL{Value: true}, typ: "NULL"},
+		"val_bool":   {val: true, typ: "BOOL"},
+		"val_bool_1": {val: types.AttributeValueMemberBOOL{Value: false}, typ: "BOOL"},
 	}
 	sql := `INSERT INTO "tbltest" VALUE {'id': 'myid'`
 	params := make([]interface{}, 0)

@@ -1,6 +1,7 @@
 package godynamo
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -70,6 +71,10 @@ func TestTx_Commit_Insert(t *testing.T) {
 	if ra1 != 1 {
 		t.Fatalf("%s failed: expected row-affected to be 1 but received %#v", testName+"/row_affected", ra1)
 	}
+	_, err = result1.LastInsertId()
+	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
+		t.Fatalf("%s failed: expected 'not support' error, but received %s", testName+"/last_insert_id", err)
+	}
 
 	ra2, err := result2.RowsAffected()
 	if err != nil {
@@ -77,6 +82,10 @@ func TestTx_Commit_Insert(t *testing.T) {
 	}
 	if ra2 != 1 {
 		t.Fatalf("%s failed: expected row-affected to be 1 but received %#v", testName+"/row_affected", ra2)
+	}
+	_, err = result2.LastInsertId()
+	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
+		t.Fatalf("%s failed: expected 'not support' error, but received %s", testName+"/last_insert_id", err)
 	}
 
 	dbresult, err := db.Query(`SELECT * FROM "tbltest"`)
