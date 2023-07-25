@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	rePlaceholder = regexp.MustCompile(`(?m)\?\s*[\,\]\}\s]`)
+	// rePlaceholder = regexp.MustCompile(`(?m)\?\s*[,})\]\s]`)
+	rePlaceholder = regexp.MustCompile(`\?`)
 	reReturning   = regexp.MustCompile(`(?im)\s+RETURNING\s+((ALL\s+OLD)|(MODIFIED\s+OLD)|(ALL\s+NEW)|(MODIFIED\s+NEW))\s+\*\s*$`)
 	reLimit       = regexp.MustCompile(`(?im)\s+LIMIT\s+(\S+)\s*$`)
 )
@@ -25,8 +26,14 @@ type StmtExecutable struct {
 	*Stmt
 }
 
+var (
+	reStringLiteralSingle = regexp.MustCompile(`'[^']*'`)
+	reStringLiteralDouble = regexp.MustCompile(`"[^\"]*"`)
+)
+
 func (s *StmtExecutable) parse() error {
-	matches := rePlaceholder.FindAllString(s.query+" ", -1)
+	queryWithRemovedStringLiteral := reStringLiteralDouble.ReplaceAllString(reStringLiteralSingle.ReplaceAllString(s.query, ""), "")
+	matches := rePlaceholder.FindAllString(queryWithRemovedStringLiteral+" ", -1)
 	s.numInput = len(matches)
 	return nil
 }
