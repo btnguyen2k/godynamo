@@ -1,6 +1,7 @@
 package godynamo
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -120,6 +121,7 @@ func TestStmtCreateGSI_parse(t *testing.T) {
 				return
 			}
 			if err != nil {
+				fmt.Printf("[DEBUG] %s\n", testCase.sql)
 				t.Fatalf("%s failed: %s", testName+"/"+testCase.name, err)
 			}
 			stmt, ok := s.(*StmtCreateGSI)
