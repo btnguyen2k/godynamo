@@ -112,18 +112,25 @@ func (c *Conn) executeContext(ctx context.Context, stmt *Stmt, values []driver.N
 			return nil, fmt.Errorf("error marshalling parameter %d-th: %s", i+1, err)
 		}
 	}
-	input := &dynamodb.ExecuteStatementInput{
-		Statement:              &stmt.query,
-		ReturnConsumedCapacity: types.ReturnConsumedCapacityTotal,
-		Limit:                  stmt.limit,
-	}
-	if len(params) > 0 {
-		input.Parameters = params
-	}
+	input := dInput(stmt.query, params, stmt.limit)
 	output, err := c.client.ExecuteStatement(c.ensureContext(ctx), input)
 	return func() *dynamodb.ExecuteStatementOutput {
 		return output
 	}, err
+}
+
+func dInput(query string, params []types.AttributeValue, limit *int32) *dynamodb.ExecuteStatementInput {
+	input := &dynamodb.ExecuteStatementInput{
+		Statement:              &query,
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityTotal,
+	}
+	if limit != nil {
+		input.Limit = limit
+	}
+	if len(params) > 0 {
+		input.Parameters = params
+	}
+	return input
 }
 
 // Prepare implements driver.Conn/Prepare.
