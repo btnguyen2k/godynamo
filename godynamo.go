@@ -15,7 +15,7 @@ import (
 
 const (
 	// Version of package godynamo.
-	Version = "0.3.0"
+	Version = "0.3.1"
 )
 
 var (
