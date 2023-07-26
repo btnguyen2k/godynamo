@@ -5,8 +5,10 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
@@ -112,6 +114,7 @@ func (c *Conn) executeContext(ctx context.Context, stmt *Stmt, values []driver.N
 			return nil, fmt.Errorf("error marshalling parameter %d-th: %s", i+1, err)
 		}
 	}
+
 	input := &dynamodb.ExecuteStatementInput{
 		Statement:              &stmt.query,
 		ReturnConsumedCapacity: types.ReturnConsumedCapacityTotal,
@@ -120,6 +123,13 @@ func (c *Conn) executeContext(ctx context.Context, stmt *Stmt, values []driver.N
 	if len(params) > 0 {
 		input.Parameters = params
 	}
+
+	if consistency, ok := stmt.withOpts["CONSISTENCY"]; ok {
+		if strings.ToLower(consistency[0]) == "strong" {
+			input.ConsistentRead = aws.Bool(true)
+		}
+	}
+
 	output, err := c.client.ExecuteStatement(c.ensureContext(ctx), input)
 	return func() *dynamodb.ExecuteStatementOutput {
 		return output
