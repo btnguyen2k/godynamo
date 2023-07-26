@@ -14,9 +14,10 @@ import (
 
 var (
 	// rePlaceholder = regexp.MustCompile(`(?m)\?\s*[,})\]\s]`)
-	rePlaceholder = regexp.MustCompile(`\?`)
-	reReturning   = regexp.MustCompile(`(?im)\s+RETURNING\s+((ALL\s+OLD)|(MODIFIED\s+OLD)|(ALL\s+NEW)|(MODIFIED\s+NEW))\s+\*\s*$`)
-	reLimit       = regexp.MustCompile(`(?im)\s+LIMIT\s+(\S+)\s*$`)
+	rePlaceholder    = regexp.MustCompile(`\?`)
+	reReturning      = regexp.MustCompile(`(?im)\s+RETURNING\s+((ALL\s+OLD)|(MODIFIED\s+OLD)|(ALL\s+NEW)|(MODIFIED\s+NEW))\s+\*\s*$`)
+	reLimit          = regexp.MustCompile(`(?im)\s+LIMIT\s+(\S+)\s*`)
+	reSelectWithOpts = regexp.MustCompile(`WITH\s+(?i)(\w+\s*=\s*\w+\s*(,\s*\w+\s*=\s*\w+\s*)*)`)
 )
 
 /*----------------------------------------------------------------------*/
@@ -24,6 +25,7 @@ var (
 // StmtExecutable is the base implementation for INSERT, SELECT, UPDATE and DELETE statements.
 type StmtExecutable struct {
 	*Stmt
+	withOptString string
 }
 
 var (
@@ -35,6 +37,21 @@ func (s *StmtExecutable) parse() error {
 	queryWithRemovedStringLiteral := reStringLiteralDouble.ReplaceAllString(reStringLiteralSingle.ReplaceAllString(s.query, ""), "")
 	matches := rePlaceholder.FindAllString(queryWithRemovedStringLiteral+" ", -1)
 	s.numInput = len(matches)
+
+	// Parse WITH options
+	withOptString := reSelectWithOpts.FindAllString(s.query, -1)
+	for _, str := range withOptString {
+		s.withOptString += " " + str
+	}
+
+	// Remove WITH options from query
+	s.query = reSelectWithOpts.ReplaceAllString(s.query, "")
+
+	// Parse WITH options
+	err := s.parseWithOpts(s.withOptString)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

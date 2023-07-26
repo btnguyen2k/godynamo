@@ -2,10 +2,51 @@ package godynamo
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 )
+
+func TestSelectWithOptParsing(t *testing.T) {
+	testCases := []struct {
+		name string
+		s    string
+		e    map[string]OptStrings
+	}{{
+		name: "basic",
+		s:    `SELECT * FROM "table"`,
+		e:    map[string]OptStrings{},
+	}, {
+		name: "with read consistency",
+		s:    `SELECT * FROM "table" WITH CONSISTENTREAD=strong`,
+		e:    map[string]OptStrings{"CONSISTENTREAD": {"strong"}},
+	},
+		{
+			name: "with read consistency and projection",
+			s:    `SELECT * FROM "table" WITH CONSISTENTREAD=strong WITH PROJECTION=ALL`,
+			e:    map[string]OptStrings{"CONSISTENTREAD": {"strong"}, "PROJECTION": {"ALL"}},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &StmtExecutable{Stmt: &Stmt{query: tc.s}}
+			err := s.parse()
+			if err != nil {
+				t.Fatalf("failed to parse: %s", err)
+			}
+			err = s.parseWithOpts(s.withOptString)
+			if err != nil {
+				t.Fatalf("failed to parse with options: %s", err)
+			}
+			if !reflect.DeepEqual(s.withOpts, tc.e) {
+				t.Fatalf("expected %#v but received %#v", tc.e, s.withOpts)
+			}
+		})
+	}
+
+}
 
 func Test_Stmt_Select_parse(t *testing.T) {
 	testName := "Test_Stmt_Select_parse"
@@ -29,6 +70,7 @@ func Test_Stmt_Select_parse(t *testing.T) {
 
 		{name: "invalid limit", sql: `SELECT * FROM "table" LIMIT a`, mustError: true},
 		{name: "invalid limit value", sql: `SELECT * FROM "table" LIMIT -2`, mustError: true},
+		{name: "limit value with opt", sql: `SELECT * FROM "table" LIMIT 1 WITH CONSTENCY=strong`, mustError: false, limit: aws.Int32(1), afterSql: `SELECT * FROM "table"`},
 	}
 
 	for _, testCase := range testData {
