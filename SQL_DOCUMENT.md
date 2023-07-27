@@ -50,6 +50,13 @@ Sample result:
 >
 > Note: the value for `LIMIT` must be a positive integer.
 
+> Since [v0.4.0](RELEASE-NOTES.md), `godynamodb` supports ConsistentRead for `SELECT` statement via clause `WITH ConsistentRead=true` or `WITH Consistent_Read=true`.
+> Example:
+>
+>       dbrows, err := db.Query(`SELECT * FROM "session" WHERE app='frontend' WITH ConsistentRead=true`)
+>
+> Note: the WITH clause must be placed at the end of the SELECT statement.
+
 ## UPDATE
 
 Syntax: [PartiQL update statements for DynamoDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.update.html)

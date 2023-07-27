@@ -2,6 +2,7 @@ package godynamo
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -29,6 +30,7 @@ func Test_Stmt_Select_parse(t *testing.T) {
 
 		{name: "invalid limit", sql: `SELECT * FROM "table" LIMIT a`, mustError: true},
 		{name: "invalid limit value", sql: `SELECT * FROM "table" LIMIT -2`, mustError: true},
+		{name: "limit value with opt", sql: `SELECT * FROM "table" LIMIT 1 WITH CONSTENCY=strong`, mustError: false, limit: aws.Int32(1), afterSql: `SELECT * FROM "table"`},
 	}
 
 	for _, testCase := range testData {
@@ -99,6 +101,45 @@ func Test_Stmt_Select_parse_placeholders(t *testing.T) {
 			if stmt.NumInput() != testCase.numPlaceholders {
 				fmt.Printf("[DEBUG] %s\n", testCase.sql)
 				t.Fatalf("%s failed: expected %#v placeholders but received %#v", testName+"/"+testCase.name, testCase.numPlaceholders, stmt.NumInput())
+			}
+		})
+	}
+}
+
+func Test_Stmt_Select_parse_withopts(t *testing.T) {
+	testName := "Test_Stmt_Select_parse_withopts"
+	testCases := []struct {
+		name     string
+		sql      string
+		expected map[string]OptStrings
+	}{{
+		name:     "basic",
+		sql:      `SELECT * FROM "table"`,
+		expected: map[string]OptStrings{},
+	}, {
+		name:     "with read consistency",
+		sql:      `SELECT * FROM "table" WITH CONSISTENTREAD=strong`,
+		expected: map[string]OptStrings{"CONSISTENTREAD": {"strong"}},
+	}, {
+		name:     "with read consistency and projection",
+		sql:      `SELECT * FROM "table" WITH CONSISTENTREAD=strong WITH PROJECTION=ALL`,
+		expected: map[string]OptStrings{"CONSISTENTREAD": {"strong"}, "PROJECTION": {"ALL"}},
+	},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			stmt, err := parseQuery(nil, testCase.sql)
+			if err != nil {
+				fmt.Printf("[DEBUG] %s\n", testCase.sql)
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name, err)
+			}
+			stmtSelect, ok := stmt.(*StmtSelect)
+			if !ok {
+				t.Fatalf("%s failed: expected StmtSelect but received %T", testName+"/"+testCase.name, stmt)
+			}
+			if !reflect.DeepEqual(stmtSelect.withOpts, testCase.expected) {
+				t.Fatalf("%s failed: expected %#v but received %#v", testName+"/"+testCase.name, testCase.expected, stmtSelect.withOpts)
 			}
 		})
 	}
