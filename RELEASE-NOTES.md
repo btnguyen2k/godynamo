@@ -1,5 +1,9 @@
 # godynamo release notes
 
+## 2023-07-27 - v0.4.0
+
+- Support `ConsistentRead` option for `SELECT` query.
+
 ## 2023-07-25 - v0.3.1
 
 - Fix: placeholder parsing.

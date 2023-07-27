@@ -8,46 +8,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 )
 
-func TestSelectWithOptParsing(t *testing.T) {
-	testCases := []struct {
-		name string
-		s    string
-		e    map[string]OptStrings
-	}{{
-		name: "basic",
-		s:    `SELECT * FROM "table"`,
-		e:    map[string]OptStrings{},
-	}, {
-		name: "with read consistency",
-		s:    `SELECT * FROM "table" WITH CONSISTENTREAD=strong`,
-		e:    map[string]OptStrings{"CONSISTENTREAD": {"strong"}},
-	},
-		{
-			name: "with read consistency and projection",
-			s:    `SELECT * FROM "table" WITH CONSISTENTREAD=strong WITH PROJECTION=ALL`,
-			e:    map[string]OptStrings{"CONSISTENTREAD": {"strong"}, "PROJECTION": {"ALL"}},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			s := &StmtExecutable{Stmt: &Stmt{query: tc.s}}
-			err := s.parse()
-			if err != nil {
-				t.Fatalf("failed to parse: %s", err)
-			}
-			err = s.parseWithOpts(s.withOptString)
-			if err != nil {
-				t.Fatalf("failed to parse with options: %s", err)
-			}
-			if !reflect.DeepEqual(s.withOpts, tc.e) {
-				t.Fatalf("expected %#v but received %#v", tc.e, s.withOpts)
-			}
-		})
-	}
-
-}
-
 func Test_Stmt_Select_parse(t *testing.T) {
 	testName := "Test_Stmt_Select_parse"
 	testData := []struct {
@@ -141,6 +101,45 @@ func Test_Stmt_Select_parse_placeholders(t *testing.T) {
 			if stmt.NumInput() != testCase.numPlaceholders {
 				fmt.Printf("[DEBUG] %s\n", testCase.sql)
 				t.Fatalf("%s failed: expected %#v placeholders but received %#v", testName+"/"+testCase.name, testCase.numPlaceholders, stmt.NumInput())
+			}
+		})
+	}
+}
+
+func Test_Stmt_Select_parse_withopts(t *testing.T) {
+	testName := "Test_Stmt_Select_parse_withopts"
+	testCases := []struct {
+		name     string
+		sql      string
+		expected map[string]OptStrings
+	}{{
+		name:     "basic",
+		sql:      `SELECT * FROM "table"`,
+		expected: map[string]OptStrings{},
+	}, {
+		name:     "with read consistency",
+		sql:      `SELECT * FROM "table" WITH CONSISTENTREAD=strong`,
+		expected: map[string]OptStrings{"CONSISTENTREAD": {"strong"}},
+	}, {
+		name:     "with read consistency and projection",
+		sql:      `SELECT * FROM "table" WITH CONSISTENTREAD=strong WITH PROJECTION=ALL`,
+		expected: map[string]OptStrings{"CONSISTENTREAD": {"strong"}, "PROJECTION": {"ALL"}},
+	},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			stmt, err := parseQuery(nil, testCase.sql)
+			if err != nil {
+				fmt.Printf("[DEBUG] %s\n", testCase.sql)
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name, err)
+			}
+			stmtSelect, ok := stmt.(*StmtSelect)
+			if !ok {
+				t.Fatalf("%s failed: expected StmtSelect but received %T", testName+"/"+testCase.name, stmt)
+			}
+			if !reflect.DeepEqual(stmtSelect.withOpts, testCase.expected) {
+				t.Fatalf("%s failed: expected %#v but received %#v", testName+"/"+testCase.name, testCase.expected, stmtSelect.withOpts)
 			}
 		})
 	}

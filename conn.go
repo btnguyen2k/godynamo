@@ -5,7 +5,6 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -124,10 +123,10 @@ func (c *Conn) executeContext(ctx context.Context, stmt *Stmt, values []driver.N
 		input.Parameters = params
 	}
 
-	if consistency, ok := stmt.withOpts["CONSISTENCY"]; ok {
-		if strings.ToLower(consistency[0]) == "strong" {
-			input.ConsistentRead = aws.Bool(true)
-		}
+	if consistentRead, ok := stmt.withOpts["CONSISTENT_READ"]; ok {
+		input.ConsistentRead = aws.Bool(consistentRead.FirstBool())
+	} else if consistentRead, ok = stmt.withOpts["CONSISTENTREAD"]; ok {
+		input.ConsistentRead = aws.Bool(consistentRead.FirstBool())
 	}
 
 	output, err := c.client.ExecuteStatement(c.ensureContext(ctx), input)
