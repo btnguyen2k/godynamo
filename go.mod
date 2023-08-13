@@ -5,7 +5,7 @@ go 1.13
 require github.com/aws/aws-sdk-go-v2/service/dynamodb v1.21.1
 
 require (
-	github.com/aws/aws-sdk-go-v2 v1.20.0
+	github.com/aws/aws-sdk-go-v2 v1.20.1
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.31
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.10.35
 	github.com/aws/smithy-go v1.14.1
