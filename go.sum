@@ -21,8 +21,9 @@ github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.32/go.mod h1:4j
 github.com/aws/aws-sdk-go-v2/service/sso v1.13.2/go.mod h1:ju+nNXUunfIFamXUIZQiICjnO/TPlOmWcYhZcSy7xaE=
 github.com/aws/aws-sdk-go-v2/service/ssooidc v1.15.2/go.mod h1:ubDBBaDFs1GHijSOTi8ljppML15GLG0HxhILtbjNNYQ=
 github.com/aws/aws-sdk-go-v2/service/sts v1.21.2/go.mod h1:FQ/DQcOfESELfJi5ED+IPPAjI5xC6nxtSolVVB773jM=
-github.com/aws/smithy-go v1.14.1 h1:EFKMUmH/iHMqLiwoEDx2rRjRQpI1YCn5jTysoaDujFs=
 github.com/aws/smithy-go v1.14.1/go.mod h1:Tg+OJXh4MB2R/uN61Ko2f6hTZwB/ZYGOtib8J3gBHzA=
+github.com/aws/smithy-go v1.14.2 h1:MJU9hqBGbvWZdApzpvoF2WAIJDbtjK2NDJSiJP7HblQ=
+github.com/aws/smithy-go v1.14.2/go.mod h1:Tg+OJXh4MB2R/uN61Ko2f6hTZwB/ZYGOtib8J3gBHzA=
 github.com/btnguyen2k/consu/reddo v0.1.7/go.mod h1:pdY5oIVX3noZIaZu3nvoKZ59+seXL/taXNGWh9xJDbg=
 github.com/btnguyen2k/consu/reddo v0.1.8 h1:pEAkB6eadp/q+ONy97/JkAAyj058uIgkSu8b862Fwug=
 github.com/btnguyen2k/consu/reddo v0.1.8/go.mod h1:pdY5oIVX3noZIaZu3nvoKZ59+seXL/taXNGWh9xJDbg=
