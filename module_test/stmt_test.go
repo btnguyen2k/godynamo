@@ -1,4 +1,4 @@
-package godynamo
+package godynamo_test
 
 import (
 	"database/sql"

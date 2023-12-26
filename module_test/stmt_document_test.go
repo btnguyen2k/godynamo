@@ -1,4 +1,4 @@
-package godynamo
+package godynamo_test
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/aws/smithy-go"
 )
 
 func Test_Query_Insert(t *testing.T) {
