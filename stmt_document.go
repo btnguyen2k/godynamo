@@ -16,7 +16,7 @@ var (
 	// rePlaceholder = regexp.MustCompile(`(?m)\?\s*[,})\]\s]`)
 	rePlaceholder = regexp.MustCompile(`\?`)
 	reReturning   = regexp.MustCompile(`(?im)\s+RETURNING\s+((ALL\s+OLD)|(MODIFIED\s+OLD)|(ALL\s+NEW)|(MODIFIED\s+NEW))\s+\*\s*$`)
-	reLimit       = regexp.MustCompile(`(?im)\s+LIMIT\s+(\S+)\s*$`)
+	reLimit       = regexp.MustCompile(`(?im)\s+LIMIT\s+(\S+)\s*`)
 )
 
 /*----------------------------------------------------------------------*/
@@ -35,6 +35,21 @@ func (s *StmtExecutable) parse() error {
 	queryWithRemovedStringLiteral := reStringLiteralDouble.ReplaceAllString(reStringLiteralSingle.ReplaceAllString(s.query, ""), "")
 	matches := rePlaceholder.FindAllString(queryWithRemovedStringLiteral+" ", -1)
 	s.numInput = len(matches)
+
+	// // Parse WITH options
+	// withOptString := reSelectWithOpts.FindAllString(s.query, -1)
+	// for _, str := range withOptString {
+	// 	s.withOptString += " " + str
+	// }
+	//
+	// // Remove WITH options from query
+	// s.query = reSelectWithOpts.ReplaceAllString(s.query, "")
+
+	// // Parse WITH options
+	// err := s.parseWithOpts(s.withOptsStr)
+	// if err != nil {
+	// 	return err
+	// }
 	return nil
 }
 
@@ -90,11 +105,18 @@ func (s *StmtInsert) ExecContext(ctx context.Context, values []driver.NamedValue
 // Syntax: follow "PartiQL select statements for DynamoDB" https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.select.html
 //
 // @Since v0.3.0 support LIMIT clause
+//
+// @Since v0.4.0 support WITH consistency=strong clause
 type StmtSelect struct {
 	*StmtExecutable
+	withOptsStr string
 }
 
 func (s *StmtSelect) parse() error {
+	if err := s.parseWithOpts(s.withOptsStr); err != nil {
+		return err
+	}
+
 	// Look for LIMIT keyword and value
 	limitMatch := reLimit.FindStringSubmatch(s.query)
 	if len(limitMatch) > 0 {

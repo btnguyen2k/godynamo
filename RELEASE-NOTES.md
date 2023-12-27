@@ -1,5 +1,13 @@
 # godynamo release notes
 
+## 2023-07-27 - v0.4.0
+
+- Support `ConsistentRead` option for `SELECT` query.
+
+## 2023-07-25 - v0.3.1
+
+- Fix: placeholder parsing.
+
 ## 2023-07-24 - v0.3.0
 
 - `ColumnTypeDatabaseTypeName` returns DynamoDB's native data types (e.g. `B`, `N`, `S`, `SS`, `NS`, `BS`, `BOOL`, `L`, `M`, `NULL`).

@@ -2,6 +2,7 @@ package godynamo
 
 import (
 	"database/sql/driver"
+	"errors"
 	"reflect"
 	"strconv"
 
@@ -44,11 +45,18 @@ var (
 
 // IsAwsError returns true if err is an AWS-specific error, and it matches awsErrCode.
 func IsAwsError(err error, awsErrCode string) bool {
-	if aerr, ok := err.(*smithy.OperationError); ok {
-		if herr, ok := aerr.Err.(*http.ResponseError); ok {
+	var aerr *smithy.OperationError
+	if errors.As(err, &aerr) {
+		var herr *http.ResponseError
+		if errors.As(aerr.Err, &herr) {
 			return reflect.TypeOf(herr.Err).Elem().Name() == awsErrCode
 		}
 	}
+	//if aerr, ok := err.(*smithy.OperationError); ok {
+	//	if herr, ok := aerr.Err.(*http.ResponseError); ok {
+	//		return reflect.TypeOf(herr.Err).Elem().Name() == awsErrCode
+	//	}
+	//}
 	return false
 }
 
@@ -132,6 +140,7 @@ func nameFromAttributeValue(v interface{}) string {
 		return "S"
 	case types.AttributeValueMemberSS:
 		return "SS"
+	default:
+		return ""
 	}
-	return ""
 }

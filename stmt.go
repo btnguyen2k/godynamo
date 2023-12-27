@@ -11,6 +11,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/btnguyen2k/consu/reddo"
 )
 
 const (
@@ -34,7 +35,7 @@ var (
 	reDropGSI     = regexp.MustCompile(`(?im)^(DROP|DELETE)\s+GSI` + ifExists + `\s+` + field + `\s+ON\s+` + field + `$`)
 
 	reInsert = regexp.MustCompile(`(?im)^INSERT\s+INTO\s+`)
-	reSelect = regexp.MustCompile(`(?im)^SELECT\s+`)
+	reSelect = regexp.MustCompile(`(?im)^SELECT\s+.*?` + with + `$`)
 	reUpdate = regexp.MustCompile(`(?im)^UPDATE\s+`)
 	reDelete = regexp.MustCompile(`(?im)^DELETE\s+FROM\s+`)
 )
@@ -157,8 +158,12 @@ func parseQuery(c *Conn, query string) (driver.Stmt, error) {
 		return stmt, stmt.validate()
 	}
 	if re := reSelect; re.MatchString(query) {
+		groups := re.FindAllStringSubmatch(query, -1)
+		withOptsStr := groups[0][1]
+		query = query[0 : len(query)-len(withOptsStr)]
 		stmt := &StmtSelect{
 			StmtExecutable: &StmtExecutable{Stmt: &Stmt{query: query, conn: c, numInput: 0}},
+			withOptsStr:    " " + strings.TrimSpace(withOptsStr),
 		}
 		if err := stmt.parse(); err != nil {
 			return nil, err
@@ -189,11 +194,24 @@ func parseQuery(c *Conn, query string) (driver.Stmt, error) {
 
 type OptStrings []string
 
-func (s OptStrings) FirstString() string {
-	if len(s) > 0 {
-		return s[0]
+func (s OptStrings) StringAt(i int) string {
+	if len(s) > i {
+		return s[i]
 	}
 	return ""
+}
+
+func (s OptStrings) BoolAt(i int) bool {
+	val, _ := reddo.ToBool(s.StringAt(i))
+	return val
+}
+
+func (s OptStrings) FirstString() string {
+	return s.StringAt(0)
+}
+
+func (s OptStrings) FirstBool() bool {
+	return s.BoolAt(0)
 }
 
 // Stmt is AWS DynamoDB abstract implementation of driver.Stmt.
