@@ -1,0 +1,134 @@
+name: 'ci'
+
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    types: [ opened, edited, reopened, synchronize, review_requested ]
+    branches: [ '*' ]
+  schedule:
+    # run once every month (at 00:00 UTC) to make sure the driver works with latest version of Go and AWS DynamoDB
+    - cron: '0 0 1 * *'
+  workflow_call:
+
+env:
+  COVER_PKG: 'github.com/btnguyen2k/godynamo'
+  AWS_REGION: 'us-east-1'
+  AWS_ACCESS_KEY_ID: 'DUMMYID'
+  AWS_SECRET_ACCESS_KEY: 'DUMMYKEY'
+  AWS_DYNAMODB_ENDPOINT: 'http://localhost:8000'
+  AWS_DYNAMODB_URL: 'Endpoint=http://localhost:8000'
+  TAG_PREFIX: 'v'
+
+jobs:
+  GoFmt:
+    runs-on: ubuntu-latest
+    name: Check format with go fmt
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Go env
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+      - name: Run go fmt
+        run: |
+          go version
+          go fmt ./...
+
+  GoLint:
+    name: GoLint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Go env
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          only-new-issues: true
+
+  ReleaseDryRun:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      RESULT: ${{ steps.release_dry_run.outputs.result }}
+      VERSION: ${{ steps.release_dry_run.outputs.releaseVersion }}
+      RELEASE_NOTES: ${{ steps.release_dry_run.outputs.releaseNotes }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+      - name: Release (dry-run)
+        id: release_dry_run
+        uses: btnguyen2k/action-semrelease@v3
+        with:
+          dry-run: true
+          auto-mode: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          tag-major-release: false
+          tag-minor-release: false
+          branches: ${{ github.ref_name }}
+          tag-prefix: ${{ env.TAG_PREFIX }}
+          tag-only: true
+
+  TestParsing:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [ '1.18', 'oldstable', 'stable' ]
+    name: Run parsing tests with Go ${{ matrix.go }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Go env
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Run tests
+        run: |
+          go version
+          go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage.txt ./
+      - name: Codecov
+        uses: codecov/codecov-action@v3
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          flags: parsing
+          name: parsing
+
+  TestLocal:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [ '1.18', 'oldstable', 'stable' ]
+    name: Run tests against local AWS DynamoDB with Go ${{ matrix.go }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Go env
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Start local AWS DynamoDB server
+        run: docker run -d --name dynamodb -p 8000:8000 amazon/dynamodb-local -jar DynamoDBLocal.jar -inMemory -sharedDb
+      - name: Run tests
+        run: |
+          go version
+          cd module_test \
+            && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg="${COVER_PKG}" -coverprofile coverage_local.txt ./ \
+            && cd ..
+      - name: Codecov
+        uses: codecov/codecov-action@v3
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          flags: other
+          name: other

@@ -24,9 +24,10 @@ if err == nil {
 Description: return info of a Local Secondary Index specified by `index-name` on a DynamoDB table specified by `table-name`.
 
 Sample result:
-|IndexArn|IndexName|IndexSizeBytes|ItemCount|KeySchema|Projection|
-|--------|---------|--------------|---------|---------|----------|
-|"arn:aws:dynamodb:ddblocal:000000000000:table/session/index/idxos"|"idxos"|0|0|[{"AttributeName":"app","KeyType":"HASH"},{"AttributeName":"os","KeyType":"RANGE"}]|{"NonKeyAttributes":["os_name","os_version"],"ProjectionType":"INCLUDE"}|
+
+| IndexArn                                                           | IndexName | IndexSizeBytes | ItemCount | KeySchema                                                                           | Projection                                                               |
+|--------------------------------------------------------------------|-----------|----------------|-----------|-------------------------------------------------------------------------------------|--------------------------------------------------------------------------|
+| "arn:aws:dynamodb:ddblocal:000000000000:table/session/index/idxos" | "idxos"   | 0              | 0         | [{"AttributeName":"app","KeyType":"HASH"},{"AttributeName":"os","KeyType":"RANGE"}] | {"NonKeyAttributes":["os_name","os_version"],"ProjectionType":"INCLUDE"} |
 
 ## CREATE GSI
 
@@ -85,9 +86,10 @@ if err == nil {
 Description: return info of a Local Secondary Index specified by `index-name` on a DynamoDB table specified by `table-name`.
 
 Sample result:
-|Backfilling|IndexArn|IndexName|IndexSizeBytes|IndexStatus|ItemCount|KeySchema|Projection|ProvisionedThroughput|
-|-----------|--------|---------|--------------|-----------|---------|---------|----------|---------------------|
-|null|"arn:aws:dynamodb:ddblocal:000000000000:table/session/index/idxbrowser"|"idxbrowser"|0|"ACTIVE"|0|[{"AttributeName":"browser","KeyType":"HASH"}]|{"NonKeyAttributes":null,"ProjectionType":"ALL"}|{"LastDecreaseDateTime":null,"LastIncreaseDateTime":null,"NumberOfDecreasesToday":null,"ReadCapacityUnits":1,"WriteCapacityUnits":1}|
+
+| Backfilling | IndexArn                                                                | IndexName    | IndexSizeBytes | IndexStatus | ItemCount | KeySchema                                      | Projection                                       | ProvisionedThroughput                                                                                                                |
+|-------------|-------------------------------------------------------------------------|--------------|----------------|-------------|-----------|------------------------------------------------|--------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| null        | "arn:aws:dynamodb:ddblocal:000000000000:table/session/index/idxbrowser" | "idxbrowser" | 0              | "ACTIVE"    | 0         | [{"AttributeName":"browser","KeyType":"HASH"}] | {"NonKeyAttributes":null,"ProjectionType":"ALL"} | {"LastDecreaseDateTime":null,"LastIncreaseDateTime":null,"NumberOfDecreasesToday":null,"ReadCapacityUnits":1,"WriteCapacityUnits":1} |
 
 ## ALTER GSI
 

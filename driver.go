@@ -3,6 +3,7 @@ package godynamo
 import (
 	"database/sql"
 	"database/sql/driver"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"os"
 	"reflect"
 	"strings"
@@ -85,7 +86,8 @@ func (d *Driver) Open(connStr string) (driver.Conn, error) {
 	}
 	endpoint := parseParamValue(params, reddo.TypeString, nil, "", []string{"ENDPOINT"}, []string{"AWS_DYNAMODB_ENDPOINT"}).(string)
 	if endpoint != "" {
-		opts.EndpointResolver = dynamodb.EndpointResolverFromURL(endpoint)
+		//opts.EndpointResolver = dynamodb.EndpointResolverFromURL(endpoint)
+		opts.BaseEndpoint = aws.String(endpoint)
 		if strings.HasPrefix(endpoint, "http://") {
 			opts.EndpointOptions.DisableHTTPS = true
 		}

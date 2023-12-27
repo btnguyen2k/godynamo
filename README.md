@@ -3,7 +3,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/btnguyen2k/godynamo)](https://goreportcard.com/report/github.com/btnguyen2k/godynamo)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/btnguyen2k/godynamo)](https://pkg.go.dev/github.com/btnguyen2k/godynamo)
 [![Actions Status](https://github.com/btnguyen2k/godynamo/workflows/godynamo/badge.svg)](https://github.com/btnguyen2k/godynamo/actions)
-[![codecov](https://codecov.io/gh/btnguyen2k/godynamo/branch/main/graph/badge.svg?token=pYdHuxbIiI)](https://codecov.io/gh/btnguyen2k/godynamo)
+[![codecov](https://codecov.io/gh/btnguyen2k/godynamo/branch/main/graph/badge.svg)](https://codecov.io/gh/btnguyen2k/godynamo)
 [![Release](https://img.shields.io/github/release/btnguyen2k/godynamo.svg?style=flat-square)](RELEASE-NOTES.md)
 
 Go driver for [AWS DynamoDB](https://aws.amazon.com/dynamodb/) which can be used with the standard [database/sql](https://golang.org/pkg/database/sql/) package.
@@ -17,7 +17,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	_ "github.com/btnguyen2k/gocosmos"
+	_ "github.com/btnguyen2k/godynamo"
 )
 
 func main() {
@@ -29,8 +29,8 @@ func main() {
 	}
 	defer db.Close()
 
-	// db instance is ready to use
-	dbrows, err := db.Query(`LIST TABLES`)
+	// db instance is ready to use 
+	dbRows, err := db.Query(`LIST TABLES`)
 	if err != nil {
 		panic(err)
 	}
@@ -45,13 +45,21 @@ func main() {
 }
 ```
 
-## Data Source Name (DSN) format for AWS Dynamo DB
+## Data Source Name (DSN) format for AWS DynamoDB
 
-`Region=<aws-region>;AkId=<aws-access-key-id>;Secret_Key=<aws-secret-key>[;Endpoint=<aws-dynamodb-endpoint>][TimeoutMs=<timeout-in-milliseconds>]`
+_Note: line-break is for readability only!_
+
+```connection
+Region=<aws-region>
+;AkId=<aws-access-key-id>
+;Secret_Key=<aws-secret-key>
+[;Endpoint=<aws-dynamodb-endpoint>]
+[TimeoutMs=<timeout-in-milliseconds>]
+```
 
 - `Region`: AWS region, for example `us-east-1`. If not supplied, the value of the environment `AWS_REGION` is used.
 - `AkId`: AWS Access Key ID, for example `AKIA1234567890ABCDEF`. If not supplied, the value of the environment `AWS_ACCESS_KEY_ID` is used.
-- `Secret_Key`: AWS Secret Key, for example `0***F`. If not supplied, the value of the environment `AWS_SECRET_ACCESS_KEY` is used.
+- `Secret_Key`: AWS Secret Key, for example `0A1B2C3D4E5F`. If not supplied, the value of the environment `AWS_SECRET_ACCESS_KEY` is used.
 - `Endpoint`: (optional) AWS DynamoDB endpoint, for example `http://localhost:8000`; useful when AWS DynamoDB is running on local machine.
 - `TimeoutMs`: (optional) timeout in milliseconds. If not specified, default value is `10000`.
 
@@ -113,8 +121,15 @@ fmt.Println("RowsAffected:", rowsAffected2) // output "RowsAffected: 1"
 
 > If a statement's condition check fails (e.g. deleting non-existing item), the whole transaction will also fail. This behaviour is different from executing statements in non-transactional mode where failed condition check results in `0` affected row without error.
 >
-> You can use [`EXISTS` function](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-functions.exists.html) for condition checking.
+> You can use [EXISTS function](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-functions.exists.html) for condition checking.
 
 ## License
 
-MIT - See [LICENSE.md](LICENSE.md).
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+
+## Support and Contribution
+
+Feel free to create [pull requests](https://github.com/btnguyen2k/godynamo/pulls) or [issues](https://github.com/btnguyen2k/godynamo/issues) to report bugs or suggest new features.
+Please search the existing issues before filing new issues to avoid duplicates. For new issues, file your bug or feature request as a new issue.
+
+If you find this project useful, please start it.

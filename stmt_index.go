@@ -125,7 +125,7 @@ func (s *StmtDescribeLSI) ExecContext(_ context.Context, _ []driver.NamedValue) 
 
 // Query implements driver.Stmt/Query.
 func (s *StmtDescribeLSI) Query(_ []driver.Value) (driver.Rows, error) {
-	return s.QueryContext(nil, nil)
+	return s.QueryContext(s.conn.newContext(), nil)
 }
 
 // QueryContext implements driver.StmtQueryContext/QueryContext.
@@ -142,7 +142,7 @@ func (s *StmtDescribeLSI) QueryContext(ctx context.Context, _ []driver.NamedValu
 			if lsi.IndexName != nil && *lsi.IndexName == s.indexName {
 				result.count = 1
 				js, _ := json.Marshal(lsi)
-				json.Unmarshal(js, &result.indexInfo)
+				_ = json.Unmarshal(js, &result.indexInfo)
 
 				result.columnList = make([]string, 0)
 				result.columnTypes = make(map[string]reflect.Type)
@@ -275,7 +275,7 @@ func (s *StmtCreateGSI) QueryContext(_ context.Context, _ []driver.NamedValue) (
 
 // Exec implements driver.Stmt/Exec.
 func (s *StmtCreateGSI) Exec(_ []driver.Value) (driver.Result, error) {
-	return s.ExecContext(nil, nil)
+	return s.ExecContext(s.conn.newContext(), nil)
 }
 
 // ExecContext implements driver.StmtExecContext/ExecContext.
@@ -325,7 +325,7 @@ func (s *StmtCreateGSI) ExecContext(ctx context.Context, _ []driver.NamedValue) 
 		affectedRows = 1
 	}
 	if s.ifNotExists && err != nil {
-		if IsAwsError(err, "ResourceInUseException") || strings.Index(err.Error(), "already exist") >= 0 {
+		if IsAwsError(err, "ResourceInUseException") || strings.Contains(err.Error(), "already exist") {
 			err = nil
 		}
 	}
@@ -368,7 +368,7 @@ func (s *StmtDescribeGSI) ExecContext(_ context.Context, _ []driver.NamedValue) 
 
 // Query implements driver.Stmt/Query.
 func (s *StmtDescribeGSI) Query(_ []driver.Value) (driver.Rows, error) {
-	return s.QueryContext(nil, nil)
+	return s.QueryContext(s.conn.newContext(), nil)
 }
 
 // QueryContext implements driver.StmtQueryContext/QueryContext.
@@ -385,7 +385,7 @@ func (s *StmtDescribeGSI) QueryContext(ctx context.Context, _ []driver.NamedValu
 			if gsi.IndexName != nil && *gsi.IndexName == s.indexName {
 				result.count = 1
 				js, _ := json.Marshal(gsi)
-				json.Unmarshal(js, &result.indexInfo)
+				_ = json.Unmarshal(js, &result.indexInfo)
 
 				result.columnList = make([]string, 0)
 				result.columnTypes = make(map[string]reflect.Type)
@@ -473,7 +473,7 @@ func (s *StmtAlterGSI) QueryContext(_ context.Context, _ []driver.NamedValue) (d
 
 // Exec implements driver.Stmt/Exec.
 func (s *StmtAlterGSI) Exec(_ []driver.Value) (driver.Result, error) {
-	return s.ExecContext(nil, nil)
+	return s.ExecContext(s.conn.newContext(), nil)
 }
 
 // ExecContext implements driver.StmtExecContext/ExecContext.
@@ -540,7 +540,7 @@ func (s *StmtDropGSI) QueryContext(_ context.Context, _ []driver.NamedValue) (dr
 
 // Exec implements driver.Stmt/Exec.
 func (s *StmtDropGSI) Exec(_ []driver.Value) (driver.Result, error) {
-	return s.ExecContext(nil, nil)
+	return s.ExecContext(s.conn.newContext(), nil)
 }
 
 // ExecContext implements driver.StmtExecContext/ExecContext.
