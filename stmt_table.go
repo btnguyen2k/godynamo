@@ -17,6 +17,7 @@ import (
 	"github.com/btnguyen2k/consu/reddo"
 )
 
+// internal use!
 type lsiDef struct {
 	indexName, attrName, attrType string
 	projectedAttrs                string
@@ -538,7 +539,7 @@ func (s *StmtDescribeTable) QueryContext(ctx context.Context, _ []driver.NamedVa
 	if err == nil {
 		result.count = 1
 		js, _ := json.Marshal(output.Table)
-		json.Unmarshal(js, &result.tableInfo)
+		_ = json.Unmarshal(js, &result.tableInfo)
 
 		result.columnList = make([]string, 0)
 		result.columnTypes = make(map[string]reflect.Type)
