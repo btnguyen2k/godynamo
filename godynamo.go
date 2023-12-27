@@ -1,4 +1,3 @@
-// Package godynamo provides database/sql driver for AWS DynamoDB.
 package godynamo
 
 import (
@@ -11,11 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/smithy-go"
 	"github.com/btnguyen2k/consu/reddo"
-)
-
-const (
-	// Version of package godynamo.
-	Version = "0.3.0"
 )
 
 var (
