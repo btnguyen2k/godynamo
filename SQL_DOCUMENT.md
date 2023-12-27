@@ -40,9 +40,10 @@ Description: use the `SELECT` statement to retrieve data from a table.
 - Note: the `SELECT` must follow [PartiQL syntax](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.select.html).
 
 Sample result:
-|active|app|user|
-|------|---|----|
-|true|"frontend"|"user1"|
+
+| active | app        | user    |
+|--------|------------|---------|
+| true   | "frontend" | "user1" |
 
 > Since [v0.3.0](RELEASE-NOTES.md), `godynamodb` supports `LIMIT` clause for `SELECT` statement. Example:
 > 
@@ -76,9 +77,10 @@ if err == nil {
 ```
 
 Sample result:
-|location|
-|--------|
-|"AU"    |
+
+| location |
+|----------|
+| "AU"     |
 
 > If there is no matched item, the error `ConditionalCheckFailedException` is suspended. That means:
 > - `RowsAffected()` returns `(0, nil)`
@@ -110,9 +112,10 @@ if err == nil {
 ```
 
 Sample result:
-|app|location|platform|user|
-|---|--------|--------|----|
-|"app0"|"AU"|"Windows"|"user1"|
+
+| app    | location | platform  | user    |
+|--------|----------|-----------|---------|
+| "app0" | "AU"     | "Windows" | "user1" |
 
 > If there is no matched item, the error `ConditionalCheckFailedException` is suspended. That means:
 > - `RowsAffected()` returns `(0, nil)`
