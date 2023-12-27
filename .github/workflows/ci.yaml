@@ -52,7 +52,6 @@ jobs:
   ReleaseDryRun:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    needs: [ GoFmt, GoLint ]
     outputs:
       RESULT: ${{ steps.release_dry_run.outputs.result }}
       VERSION: ${{ steps.release_dry_run.outputs.releaseVersion }}

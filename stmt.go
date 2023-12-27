@@ -281,7 +281,7 @@ func (r *ResultResultSet) init() *ResultResultSet {
 			colMap[col] = true
 			if r.columnTypes[col] == nil {
 				var value interface{}
-				attributevalue.Unmarshal(av, &value)
+				_ = attributevalue.Unmarshal(av, &value)
 				r.columnTypes[col] = reflect.TypeOf(value)
 				r.columnSourceTypes[col] = nameFromAttributeValue(av)
 			}
@@ -332,7 +332,7 @@ func (r *ResultResultSet) Next(dest []driver.Value) error {
 	r.cursorCount++
 	for i, colName := range r.columnList {
 		var value interface{}
-		attributevalue.Unmarshal(rowData[colName], &value)
+		_ = attributevalue.Unmarshal(rowData[colName], &value)
 		dest[i] = value
 	}
 	return nil

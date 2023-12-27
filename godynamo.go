@@ -73,39 +73,30 @@ func ToAttributeValueUnsafe(value interface{}) types.AttributeValue {
 
 // ToAttributeValue marshals a Go value to AWS AttributeValue.
 func ToAttributeValue(value interface{}) (types.AttributeValue, error) {
-	switch value.(type) {
+	switch v := value.(type) {
 	case types.AttributeValueMemberB:
-		v := value.(types.AttributeValueMemberB)
 		return &v, nil
 	case types.AttributeValueMemberBOOL:
-		v := value.(types.AttributeValueMemberBOOL)
 		return &v, nil
 	case types.AttributeValueMemberBS:
-		v := value.(types.AttributeValueMemberBS)
 		return &v, nil
 	case types.AttributeValueMemberL:
-		v := value.(types.AttributeValueMemberL)
 		return &v, nil
 	case types.AttributeValueMemberM:
-		v := value.(types.AttributeValueMemberM)
 		return &v, nil
 	case types.AttributeValueMemberN:
-		v := value.(types.AttributeValueMemberN)
 		return &v, nil
 	case types.AttributeValueMemberNS:
-		v := value.(types.AttributeValueMemberNS)
 		return &v, nil
 	case types.AttributeValueMemberNULL:
-		v := value.(types.AttributeValueMemberNULL)
 		return &v, nil
 	case types.AttributeValueMemberS:
-		v := value.(types.AttributeValueMemberS)
 		return &v, nil
 	case types.AttributeValueMemberSS:
-		v := value.(types.AttributeValueMemberSS)
 		return &v, nil
+	default:
+		return attributevalue.Marshal(value)
 	}
-	return attributevalue.Marshal(value)
 }
 
 // nameFromAttributeValue returns the name of the attribute value.
