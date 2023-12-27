@@ -6,6 +6,9 @@ on:
   pull_request:
     types: [ opened, edited, reopened, synchronize, review_requested ]
     branches: [ '*' ]
+  schedule:
+    # run once every month (at 00:00 UTC) to make sure the driver works with latest version of Go and AWS DynamoDB
+    - cron: '0 0 1 * *'
   workflow_call:
 
 env:
