@@ -98,7 +98,7 @@ func (s *StmtSelect) parse() error {
 	// Look for LIMIT keyword and value
 	limitMatch := reLimit.FindStringSubmatch(s.query)
 	if len(limitMatch) > 0 {
-		sLimit, err := strconv.Atoi(strings.TrimSpace(limitMatch[1]))
+		sLimit, err := strconv.ParseInt(strings.TrimSpace(limitMatch[1]), 10, 32)
 		if err != nil {
 			return fmt.Errorf("error parsing LIMIT value: %s", err)
 		}
