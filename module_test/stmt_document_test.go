@@ -2,6 +2,8 @@ package godynamo_test
 
 import (
 	"fmt"
+	"github.com/aws/smithy-go"
+	"github.com/btnguyen2k/godynamo"
 	"reflect"
 	"strings"
 	"testing"
@@ -394,11 +396,11 @@ func TestResultResultSet_ColumnTypeDatabaseTypeName(t *testing.T) {
 		"val_bs_1": {val: types.AttributeValueMemberBS{Value: [][]byte{[]byte("a"), []byte("b"), []byte("c")}}, typ: "BS"},
 		"val_m":    {val: map[string]interface{}{"a": 1, "b": "2", "c": true, "d": []byte("4")}, typ: "M"},
 		"val_m_1": {val: types.AttributeValueMemberM{Value: map[string]types.AttributeValue{
-			"a": ToAttributeValueUnsafe(1), "b": ToAttributeValueUnsafe("2"), "c": ToAttributeValueUnsafe(true), "d": ToAttributeValueUnsafe([]byte("4"))},
+			"a": godynamo.ToAttributeValueUnsafe(1), "b": godynamo.ToAttributeValueUnsafe("2"), "c": godynamo.ToAttributeValueUnsafe(true), "d": godynamo.ToAttributeValueUnsafe([]byte("4"))},
 		}, typ: "M"},
 		"val_l": {val: []interface{}{1.2, "3", false, []byte("4")}, typ: "L"},
 		"val_l_1": {val: types.AttributeValueMemberL{Value: []types.AttributeValue{
-			ToAttributeValueUnsafe(1.2), ToAttributeValueUnsafe("3"), ToAttributeValueUnsafe(false), ToAttributeValueUnsafe([]byte("4"))},
+			godynamo.ToAttributeValueUnsafe(1.2), godynamo.ToAttributeValueUnsafe("3"), godynamo.ToAttributeValueUnsafe(false), godynamo.ToAttributeValueUnsafe([]byte("4"))},
 		}, typ: "L"},
 		"val_null":   {val: nil, typ: "NULL"},
 		"val_null_1": {val: types.AttributeValueMemberNULL{Value: true}, typ: "NULL"},
