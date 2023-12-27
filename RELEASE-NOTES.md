@@ -1,5 +1,20 @@
 # godynamo release notes
 
+## 2023-12-27 - v1.0.0
+
+### Changed
+
+- BREAKING: bump Go version to 1.18
+
+### Added/Refactoring
+
+- Refactor to follow go-module-template structure
+
+### Fixed/Improvement
+
+- Fix GoLint
+- Fix CodeQL alerts
+
 ## 2023-07-27 - v0.4.0
 
 - Support `ConsistentRead` option for `SELECT` query.
