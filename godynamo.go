@@ -1,8 +1,8 @@
-// Package godynamo provides database/sql driver for AWS DynamoDB.
 package godynamo
 
 import (
 	"database/sql/driver"
+	"errors"
 	"reflect"
 	"strconv"
 
@@ -11,11 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/smithy-go"
 	"github.com/btnguyen2k/consu/reddo"
-)
-
-const (
-	// Version of package godynamo.
-	Version = "0.4.0"
 )
 
 var (
@@ -50,11 +45,18 @@ var (
 
 // IsAwsError returns true if err is an AWS-specific error, and it matches awsErrCode.
 func IsAwsError(err error, awsErrCode string) bool {
-	if aerr, ok := err.(*smithy.OperationError); ok {
-		if herr, ok := aerr.Err.(*http.ResponseError); ok {
+	var aerr *smithy.OperationError
+	if errors.As(err, &aerr) {
+		var herr *http.ResponseError
+		if errors.As(aerr.Err, &herr) {
 			return reflect.TypeOf(herr.Err).Elem().Name() == awsErrCode
 		}
 	}
+	//if aerr, ok := err.(*smithy.OperationError); ok {
+	//	if herr, ok := aerr.Err.(*http.ResponseError); ok {
+	//		return reflect.TypeOf(herr.Err).Elem().Name() == awsErrCode
+	//	}
+	//}
 	return false
 }
 
@@ -79,39 +81,30 @@ func ToAttributeValueUnsafe(value interface{}) types.AttributeValue {
 
 // ToAttributeValue marshals a Go value to AWS AttributeValue.
 func ToAttributeValue(value interface{}) (types.AttributeValue, error) {
-	switch value.(type) {
+	switch v := value.(type) {
 	case types.AttributeValueMemberB:
-		v := value.(types.AttributeValueMemberB)
 		return &v, nil
 	case types.AttributeValueMemberBOOL:
-		v := value.(types.AttributeValueMemberBOOL)
 		return &v, nil
 	case types.AttributeValueMemberBS:
-		v := value.(types.AttributeValueMemberBS)
 		return &v, nil
 	case types.AttributeValueMemberL:
-		v := value.(types.AttributeValueMemberL)
 		return &v, nil
 	case types.AttributeValueMemberM:
-		v := value.(types.AttributeValueMemberM)
 		return &v, nil
 	case types.AttributeValueMemberN:
-		v := value.(types.AttributeValueMemberN)
 		return &v, nil
 	case types.AttributeValueMemberNS:
-		v := value.(types.AttributeValueMemberNS)
 		return &v, nil
 	case types.AttributeValueMemberNULL:
-		v := value.(types.AttributeValueMemberNULL)
 		return &v, nil
 	case types.AttributeValueMemberS:
-		v := value.(types.AttributeValueMemberS)
 		return &v, nil
 	case types.AttributeValueMemberSS:
-		v := value.(types.AttributeValueMemberSS)
 		return &v, nil
+	default:
+		return attributevalue.Marshal(value)
 	}
-	return attributevalue.Marshal(value)
 }
 
 // nameFromAttributeValue returns the name of the attribute value.
@@ -147,6 +140,7 @@ func nameFromAttributeValue(v interface{}) string {
 		return "S"
 	case types.AttributeValueMemberSS:
 		return "SS"
+	default:
+		return ""
 	}
-	return ""
 }

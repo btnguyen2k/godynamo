@@ -17,6 +17,7 @@ import (
 	"github.com/btnguyen2k/consu/reddo"
 )
 
+// internal use!
 type lsiDef struct {
 	indexName, attrName, attrType string
 	projectedAttrs                string
@@ -170,7 +171,7 @@ func (s *StmtCreateTable) QueryContext(_ context.Context, _ []driver.NamedValue)
 
 // Exec implements driver.Stmt/Exec.
 func (s *StmtCreateTable) Exec(_ []driver.Value) (driver.Result, error) {
-	return s.ExecContext(nil, nil)
+	return s.ExecContext(s.conn.newContext(), nil)
 }
 
 // ExecContext implements driver.StmtExecContext/Exec.
@@ -265,7 +266,7 @@ func (s *StmtListTables) ExecContext(_ context.Context, _ []driver.NamedValue) (
 
 // Query implements driver.Stmt/Query.
 func (s *StmtListTables) Query(_ []driver.Value) (driver.Rows, error) {
-	return s.QueryContext(nil, nil)
+	return s.QueryContext(s.conn.newContext(), nil)
 }
 
 // QueryContext implements driver.StmtQueryContext/QueryContext.
@@ -401,7 +402,7 @@ func (s *StmtAlterTable) QueryContext(_ []driver.NamedValue) (driver.Rows, error
 
 // Exec implements driver.Stmt/Exec.
 func (s *StmtAlterTable) Exec(_ []driver.Value) (driver.Result, error) {
-	return s.ExecContext(nil, nil)
+	return s.ExecContext(s.conn.newContext(), nil)
 }
 
 // ExecContext implements driver.StmtExecContext/ExecContext.
@@ -469,7 +470,7 @@ func (s *StmtDropTable) QueryContext(_ context.Context, _ []driver.NamedValue) (
 
 // Exec implements driver.Stmt/Exec.
 func (s *StmtDropTable) Exec(_ []driver.Value) (driver.Result, error) {
-	return s.ExecContext(nil, nil)
+	return s.ExecContext(s.conn.newContext(), nil)
 }
 
 // ExecContext implements driver.StmtExecContext/Exec.
@@ -523,7 +524,7 @@ func (s *StmtDescribeTable) ExecContext(_ context.Context, _ []driver.NamedValue
 
 // Query implements driver.Stmt/Query.
 func (s *StmtDescribeTable) Query(_ []driver.Value) (driver.Rows, error) {
-	return s.QueryContext(nil, nil)
+	return s.QueryContext(s.conn.newContext(), nil)
 }
 
 // QueryContext implements driver.StmtQueryContext/Query.
@@ -538,7 +539,7 @@ func (s *StmtDescribeTable) QueryContext(ctx context.Context, _ []driver.NamedVa
 	if err == nil {
 		result.count = 1
 		js, _ := json.Marshal(output.Table)
-		json.Unmarshal(js, &result.tableInfo)
+		_ = json.Unmarshal(js, &result.tableInfo)
 
 		result.columnList = make([]string, 0)
 		result.columnTypes = make(map[string]reflect.Type)

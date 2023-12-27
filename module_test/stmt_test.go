@@ -1,4 +1,4 @@
-package godynamo
+package godynamo_test
 
 import (
 	"database/sql"
@@ -11,6 +11,11 @@ import (
 	"github.com/btnguyen2k/consu/reddo"
 	"github.com/btnguyen2k/consu/semita"
 )
+
+type lsiDef struct {
+	indexName, attrName, attrType string
+	projectedAttrs                string
+}
 
 type lsiInfo struct {
 	lsiDef
@@ -35,11 +40,11 @@ type tableInfo struct {
 }
 
 func _initTest(db *sql.DB) {
-	db.Exec(`DROP TABLE IF EXISTS tblnotexist`)
-	db.Exec(`DROP TABLE IF EXISTS tblnotexists`)
-	db.Exec(`DROP TABLE IF EXISTS tbltest`)
+	_, _ = db.Exec(`DROP TABLE IF EXISTS tblnotexist`)
+	_, _ = db.Exec(`DROP TABLE IF EXISTS tblnotexists`)
+	_, _ = db.Exec(`DROP TABLE IF EXISTS tbltest`)
 	for i := 0; i < 10; i++ {
-		db.Exec(`DROP TABLE IF EXISTS tbltest` + strconv.Itoa(i))
+		_, _ = db.Exec(`DROP TABLE IF EXISTS tbltest` + strconv.Itoa(i))
 	}
 }
 

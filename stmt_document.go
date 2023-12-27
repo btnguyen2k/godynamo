@@ -80,7 +80,7 @@ func (s *StmtInsert) QueryContext(_ context.Context, _ []driver.NamedValue) (dri
 
 // Exec implements driver.Stmt/Exec.
 func (s *StmtInsert) Exec(values []driver.Value) (driver.Result, error) {
-	return s.ExecContext(nil, ValuesToNamedValues(values))
+	return s.ExecContext(s.conn.newContext(), ValuesToNamedValues(values))
 }
 
 // ExecContext implements driver.StmtExecContext/ExecContext.
@@ -88,7 +88,7 @@ func (s *StmtInsert) Exec(values []driver.Value) (driver.Result, error) {
 // @Available since v0.2.0
 func (s *StmtInsert) ExecContext(ctx context.Context, values []driver.NamedValue) (driver.Result, error) {
 	outputFn, err := s.conn.executeContext(ctx, s.Stmt, values)
-	if err == ErrInTx {
+	if errors.Is(err, ErrInTx) {
 		return &TxResultNoResultSet{outputFn: outputFn}, nil
 	}
 	affectedRows := int64(0)
@@ -120,7 +120,7 @@ func (s *StmtSelect) parse() error {
 	// Look for LIMIT keyword and value
 	limitMatch := reLimit.FindStringSubmatch(s.query)
 	if len(limitMatch) > 0 {
-		sLimit, err := strconv.Atoi(strings.TrimSpace(limitMatch[1]))
+		sLimit, err := strconv.ParseInt(strings.TrimSpace(limitMatch[1]), 10, 32)
 		if err != nil {
 			return fmt.Errorf("error parsing LIMIT value: %s", err)
 		}
@@ -148,7 +148,7 @@ func (s *StmtSelect) ExecContext(_ context.Context, _ []driver.NamedValue) (driv
 
 // Query implements driver.Stmt/Query.
 func (s *StmtSelect) Query(values []driver.Value) (driver.Rows, error) {
-	return s.QueryContext(nil, ValuesToNamedValues(values))
+	return s.QueryContext(s.conn.newContext(), ValuesToNamedValues(values))
 }
 
 // QueryContext implements driver.StmtQueryContext/QueryContext.
@@ -184,7 +184,7 @@ func (s *StmtUpdate) parse() error {
 
 // Query implements driver.Stmt/Query.
 func (s *StmtUpdate) Query(values []driver.Value) (driver.Rows, error) {
-	return s.QueryContext(nil, ValuesToNamedValues(values))
+	return s.QueryContext(s.conn.newContext(), ValuesToNamedValues(values))
 }
 
 // QueryContext implements driver.StmtQueryContext/QueryContext.
@@ -201,7 +201,7 @@ func (s *StmtUpdate) QueryContext(ctx context.Context, values []driver.NamedValu
 
 // Exec implements driver.Stmt/Exec.
 func (s *StmtUpdate) Exec(values []driver.Value) (driver.Result, error) {
-	return s.ExecContext(nil, ValuesToNamedValues(values))
+	return s.ExecContext(s.conn.newContext(), ValuesToNamedValues(values))
 }
 
 // ExecContext implements driver.StmtExecContext/ExecContext.
@@ -209,7 +209,7 @@ func (s *StmtUpdate) Exec(values []driver.Value) (driver.Result, error) {
 // @Available since v0.2.0
 func (s *StmtUpdate) ExecContext(ctx context.Context, values []driver.NamedValue) (driver.Result, error) {
 	outputFn, err := s.conn.executeContext(ctx, s.Stmt, values)
-	if err == ErrInTx {
+	if errors.Is(err, ErrInTx) {
 		return &TxResultNoResultSet{outputFn: outputFn}, nil
 	}
 	affectedRows := int64(0)
@@ -242,7 +242,7 @@ func (s *StmtDelete) parse() error {
 
 // Query implements driver.Stmt/Query.
 func (s *StmtDelete) Query(values []driver.Value) (driver.Rows, error) {
-	return s.QueryContext(nil, ValuesToNamedValues(values))
+	return s.QueryContext(s.conn.newContext(), ValuesToNamedValues(values))
 }
 
 // QueryContext implements driver.StmtQueryContext/QueryContext.
@@ -259,7 +259,7 @@ func (s *StmtDelete) QueryContext(ctx context.Context, values []driver.NamedValu
 
 // Exec implements driver.Stmt/Exec.
 func (s *StmtDelete) Exec(values []driver.Value) (driver.Result, error) {
-	return s.ExecContext(nil, ValuesToNamedValues(values))
+	return s.ExecContext(s.conn.newContext(), ValuesToNamedValues(values))
 }
 
 // ExecContext implements driver.StmtExecContext/ExecContext.
@@ -267,7 +267,7 @@ func (s *StmtDelete) Exec(values []driver.Value) (driver.Result, error) {
 // @Available since v0.2.0
 func (s *StmtDelete) ExecContext(ctx context.Context, values []driver.NamedValue) (driver.Result, error) {
 	outputFn, err := s.conn.executeContext(ctx, s.Stmt, values)
-	if err == ErrInTx {
+	if errors.Is(err, ErrInTx) {
 		return &TxResultNoResultSet{outputFn: outputFn}, nil
 	}
 	affectedRows := int64(0)

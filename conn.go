@@ -41,9 +41,18 @@ type Conn struct {
 	txStmtList []*txStmt
 }
 
+func (c *Conn) newContext() context.Context {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), c.timeout)
+	go func() {
+		time.Sleep(c.timeout)
+		cancelFunc()
+	}()
+	return ctx
+}
+
 func (c *Conn) ensureContext(ctx context.Context) context.Context {
 	if ctx == nil {
-		ctx, _ = context.WithTimeout(context.Background(), c.timeout)
+		ctx = c.newContext()
 	}
 	return ctx
 }
@@ -70,7 +79,7 @@ func (c *Conn) commit() error {
 		TransactStatements:     txStmts,
 		ReturnConsumedCapacity: types.ReturnConsumedCapacityTotal,
 	}
-	outputExecuteTransaction, err := c.client.ExecuteTransaction(c.ensureContext(nil), input)
+	outputExecuteTransaction, err := c.client.ExecuteTransaction(c.newContext(), input)
 	if err == nil {
 		for i, txStmt := range c.txStmtList {
 			txStmt.output = &dynamodb.ExecuteStatementOutput{ResultMetadata: outputExecuteTransaction.ResultMetadata}
