@@ -4,12 +4,22 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"github.com/btnguyen2k/consu/reddo"
 	"github.com/btnguyen2k/godynamo"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
+)
+
+var (
+	typeM    = reflect.TypeOf(make(map[string]interface{}))
+	typeL    = reflect.TypeOf(make([]interface{}, 0))
+	typeS    = reddo.TypeString
+	typeBool = reddo.TypeBool
+	typeN    = reddo.TypeFloat
+	typeTime = reddo.TypeTime
 )
 
 func Test_OpenDatabase(t *testing.T) {
