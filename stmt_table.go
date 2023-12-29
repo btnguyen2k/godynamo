@@ -189,6 +189,9 @@ func (s *StmtCreateTable) ExecContext(ctx context.Context, _ []driver.NamedValue
 	}
 
 	lsi := make([]types.LocalSecondaryIndex, len(s.lsi))
+	if len(s.lsi) == 0 {
+		lsi = nil
+	}
 	for i := range s.lsi {
 		attrDefs = append(attrDefs, types.AttributeDefinition{AttributeName: &s.lsi[i].attrName, AttributeType: dataTypes[s.lsi[i].attrType]})
 		lsi[i] = types.LocalSecondaryIndex{
