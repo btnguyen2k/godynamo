@@ -17,7 +17,7 @@ func Test_Query_Insert(t *testing.T) {
 	db := _openDb(t, testName)
 	defer db.Close()
 
-	_, err := db.Query("INSERT INTO table VALUE {}")
+	_, err := db.Query(fmt.Sprintf(`INSERT INTO %s VALUE {}`, tblTestTemp))
 	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
 		t.Fatalf("%s failed: expected 'not support' error, but received %#v", testName, err)
 	}
@@ -29,7 +29,7 @@ func Test_Exec_Insert(t *testing.T) {
 	defer db.Close()
 	_initTest(db)
 
-	db.Exec(`CREATE TABLE tbltest WITH pk=id:string WITH rcu=1 WITH wcu=1`)
+	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
 
 	testData := []struct {
 		name         string
@@ -37,8 +37,8 @@ func Test_Exec_Insert(t *testing.T) {
 		params       []interface{}
 		affectedRows int64
 	}{
-		{name: "basic", sql: `INSERT INTO "tbltest" VALUE {'id': '1', 'name': 'User 1'}`, affectedRows: 1},
-		{name: "parameterized", sql: `INSERT INTO "tbltest" VALUE {'id': ?, 'name': ?, 'active': ?, 'grade': ?, 'list': ?, 'map': ?}`, affectedRows: 1,
+		{name: "basic", sql: fmt.Sprintf(`INSERT INTO "%s" VALUE {'id': '1', 'name': 'User 1'}`, tblTestTemp), affectedRows: 1},
+		{name: "parameterized", sql: fmt.Sprintf(`INSERT INTO "%s" VALUE {'id': ?, 'name': ?, 'active': ?, 'grade': ?, 'list': ?, 'map': ?}`, tblTestTemp), affectedRows: 1,
 			params: []interface{}{"2", "User 2", true, 10, []interface{}{1.2, false, "3"}, map[string]interface{}{"N": -3.4, "B": false, "S": "3"}}},
 	}
 
@@ -68,7 +68,7 @@ func Test_Exec_Select(t *testing.T) {
 	db := _openDb(t, testName)
 	defer db.Close()
 
-	_, err := db.Exec(`SELECT * FROM "table" WHERE id='a'`)
+	_, err := db.Exec(fmt.Sprintf(`SELECT * FROM "%s" WHERE id='a'`, tblTestTemp))
 	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
 		t.Fatalf("%s failed: expected 'not support' error, but received %#v", testName, err)
 	}
@@ -80,16 +80,16 @@ func Test_Query_Select(t *testing.T) {
 	defer db.Close()
 	_initTest(db)
 
-	_, err := db.Exec(`CREATE TABLE tbltest WITH PK=app:string WITH SK=user:string WITH rcu=100 WITH wcu=100`)
+	_, err := db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=3 WITH wcu=3`, tblTestTemp))
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_, err = db.Exec(`INSERT INTO "tbltest" VALUE {'app': ?, 'user': ?, 'os': ?, 'active': ?, 'duration': ?}`, "app0", "user1", "Linux", true, 12.34)
+	_, err = db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'app': ?, 'user': ?, 'os': ?, 'active': ?, 'duration': ?}`, tblTestTemp), "app0", "user1", "Linux", true, 12.34)
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
 
-	dbresult, err := db.Query(`SELECT * FROM "tbltest" WHERE app=?`, "app0")
+	dbresult, err := db.Query(fmt.Sprintf(`SELECT * FROM "%s" WHERE app=?`, tblTestTemp), "app0")
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
@@ -118,7 +118,7 @@ func Test_Query_Select_withLimit(t *testing.T) {
 	defer db.Close()
 	_initTest(db)
 
-	_, err := db.Exec(`CREATE TABLE tbltest WITH PK=app:string WITH SK=user:string WITH rcu=100 WITH wcu=100`)
+	_, err := db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=5 WITH wcu=5`, tblTestTemp))
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
@@ -128,13 +128,13 @@ func Test_Query_Select_withLimit(t *testing.T) {
 		{"app", "user3", "MacOS", true, 4.56},
 	}
 	for _, data := range insData {
-		_, err = db.Exec(`INSERT INTO "tbltest" VALUE {'app': ?, 'user': ?, 'os': ?, 'active': ?, 'duration': ?}`, data...)
+		_, err = db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'app': ?, 'user': ?, 'os': ?, 'active': ?, 'duration': ?}`, tblTestTemp), data...)
 		if err != nil {
 			t.Fatalf("%s failed: %s", testName+"/insert", err)
 		}
 	}
 
-	dbresult, err := db.Query(`SELECT * FROM "tbltest" WHERE app=?`, "app")
+	dbresult, err := db.Query(fmt.Sprintf(`SELECT * FROM "%s" WHERE app=?`, tblTestTemp), "app")
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/select", err)
 	}
@@ -146,7 +146,7 @@ func Test_Query_Select_withLimit(t *testing.T) {
 		t.Fatalf("%s failed: expected %#v row but received %#v", testName+"/select", len(insData), len(allRows))
 	}
 
-	dbresult, err = db.Query(`SELECT * FROM "tbltest" WHERE app=? LIMIT 2`, "app")
+	dbresult, err = db.Query(fmt.Sprintf(`SELECT * FROM "%s" WHERE app=? LIMIT 2`, tblTestTemp), "app")
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/select", err)
 	}
@@ -166,26 +166,26 @@ func Test_Exec_Delete(t *testing.T) {
 	_initTest(db)
 
 	// setup table
-	db.Exec(`DROP TABLE IF EXISTS tbltest`)
-	db.Exec(`CREATE TABLE tbltest WITH PK=app:string WITH SK=user:string WITH rcu=100 WITH wcu=100`)
-	_, err := db.Exec(`INSERT INTO "tbltest" VALUE {'app': ?, 'user': ?, 'os': ?, 'active': ?, 'duration': ?}`, "app0", "user1", "Ubuntu", true, 12.34)
+	db.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp))
+	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=5 WITH wcu=5`, tblTestTemp))
+	_, err := db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'app': ?, 'user': ?, 'os': ?, 'active': ?, 'duration': ?}`, tblTestTemp), "app0", "user1", "Ubuntu", true, 12.34)
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/insert", err)
 	}
-	_, err = db.Exec(`INSERT INTO "tbltest" VALUE {'app': ?, 'user': ?, 'platform': ?, 'location': ?}`, "app0", "user2", "Windows", "AU")
+	_, err = db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'app': ?, 'user': ?, 'platform': ?, 'location': ?}`, tblTestTemp), "app0", "user2", "Windows", "AU")
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/insert", err)
 	}
 
 	// make sure table has 2 rows
-	dbRows1, _ := db.Query(`SELECT * FROM "tbltest"`)
+	dbRows1, _ := db.Query(fmt.Sprintf(`SELECT * FROM "%s"`, tblTestTemp))
 	rows1, _ := _fetchAllRows(dbRows1)
 	if len(rows1) != 2 {
 		t.Fatalf("%s failed: expected 2 rows in table, but there is %#v", testName, len(rows1))
 	}
 
 	// delete 1 row
-	sql := `DELETE FROM "tbltest" WHERE "app"=? AND "user"=?`
+	sql := fmt.Sprintf(`DELETE FROM "%s" WHERE "app"=? AND "user"=?`, tblTestTemp)
 	result1, err := db.Exec(sql, "app0", "user1")
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/delete", err)
@@ -199,7 +199,7 @@ func Test_Exec_Delete(t *testing.T) {
 	}
 
 	// make sure table has 1 row
-	dbRows2, _ := db.Query(`SELECT * FROM "tbltest"`)
+	dbRows2, _ := db.Query(fmt.Sprintf(`SELECT * FROM "%s"`, tblTestTemp))
 	rows2, _ := _fetchAllRows(dbRows2)
 	if len(rows2) != 1 {
 		t.Fatalf("%s failed: expected 1 rows in table, but there is %#v", testName, len(rows1))
@@ -226,26 +226,26 @@ func Test_Query_Delete(t *testing.T) {
 	_initTest(db)
 
 	// setup table
-	db.Exec(`DROP TABLE IF EXISTS tbltest`)
-	db.Exec(`CREATE TABLE tbltest WITH PK=app:string WITH SK=user:string WITH rcu=100 WITH wcu=100`)
-	_, err := db.Exec(`INSERT INTO "tbltest" VALUE {'app': ?, 'user': ?, 'os': ?, 'active': ?, 'duration': ?}`, "app0", "user1", "Ubuntu", true, 12.34)
+	db.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp))
+	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=5 WITH wcu=5`, tblTestTemp))
+	_, err := db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'app': ?, 'user': ?, 'os': ?, 'active': ?, 'duration': ?}`, tblTestTemp), "app0", "user1", "Ubuntu", true, 12.34)
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/insert", err)
 	}
-	_, err = db.Exec(`INSERT INTO "tbltest" VALUE {'app': ?, 'user': ?, 'platform': ?, 'location': ?}`, "app0", "user2", "Windows", "AU")
+	_, err = db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'app': ?, 'user': ?, 'platform': ?, 'location': ?}`, tblTestTemp), "app0", "user2", "Windows", "AU")
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/insert", err)
 	}
 
 	// make sure table has 2 rows
-	dbRows1, _ := db.Query(`SELECT * FROM "tbltest"`)
+	dbRows1, _ := db.Query(fmt.Sprintf(`SELECT * FROM "%s"`, tblTestTemp))
 	rows1, _ := _fetchAllRows(dbRows1)
 	if len(rows1) != 2 {
 		t.Fatalf("%s failed: expected 2 rows in table, but there is %#v", testName, len(rows1))
 	}
 
 	// delete 1 row
-	sql := `DELETE FROM "tbltest" WHERE "app"=? AND "user"=? RETURNING ALL OLD *`
+	sql := fmt.Sprintf(`DELETE FROM "%s" WHERE "app"=? AND "user"=? RETURNING ALL OLD *`, tblTestTemp)
 	result1, err := db.Query(sql, "app0", "user1")
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/delete", err)
@@ -264,7 +264,7 @@ func Test_Query_Delete(t *testing.T) {
 	}
 
 	// make sure table has 1 row
-	dbRows2, _ := db.Query(`SELECT * FROM "tbltest"`)
+	dbRows2, _ := db.Query(fmt.Sprintf(`SELECT * FROM "%s"`, tblTestTemp))
 	rows2, _ := _fetchAllRows(dbRows2)
 	if len(rows2) != 1 {
 		t.Fatalf("%s failed: expected 1 rows in table, but there is %#v", testName, len(rows1))
@@ -291,15 +291,15 @@ func Test_Exec_Update(t *testing.T) {
 	_initTest(db)
 
 	// setup table
-	db.Exec(`DROP TABLE IF EXISTS tbltest`)
-	db.Exec(`CREATE TABLE tbltest WITH PK=app:string WITH SK=user:string WITH rcu=100 WITH wcu=100`)
-	_, err := db.Exec(`INSERT INTO "tbltest" VALUE {'app': ?, 'user': ?, 'platform': ?, 'location': ?}`, "app0", "user0", "Linux", "AU")
+	db.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp))
+	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=5 WITH wcu=5`, tblTestTemp))
+	_, err := db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'app': ?, 'user': ?, 'platform': ?, 'location': ?}`, tblTestTemp), "app0", "user0", "Linux", "AU")
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/insert", err)
 	}
 
 	// update 1 row
-	sql := `UPDATE "tbltest" SET location=? SET os=? WHERE "app"=? AND "user"=?`
+	sql := fmt.Sprintf(`UPDATE "%s" SET location=? SET os=? WHERE "app"=? AND "user"=?`, tblTestTemp)
 	result1, err := db.Exec(sql, "VN", "Ubuntu", "app0", "user0")
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/update", err)
@@ -333,15 +333,15 @@ func Test_Query_Update(t *testing.T) {
 	_initTest(db)
 
 	// setup table
-	db.Exec(`DROP TABLE IF EXISTS tbltest`)
-	db.Exec(`CREATE TABLE tbltest WITH PK=app:string WITH SK=user:string WITH rcu=100 WITH wcu=100`)
-	_, err := db.Exec(`INSERT INTO "tbltest" VALUE {'app': ?, 'user': ?, 'platform': ?, 'location': ?}`, "app0", "user0", "Linux", "AU")
+	db.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp))
+	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=5 WITH wcu=5`, tblTestTemp))
+	_, err := db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'app': ?, 'user': ?, 'platform': ?, 'location': ?}`, tblTestTemp), "app0", "user0", "Linux", "AU")
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/insert", err)
 	}
 
 	// update 1 row
-	sql := `UPDATE "tbltest" SET location=? SET os=? WHERE "app"=? AND "user"=?`
+	sql := fmt.Sprintf(`UPDATE "%s" SET location=? SET os=? WHERE "app"=? AND "user"=?`, tblTestTemp)
 	dbrows1, err := db.Query(sql+" RETURNING MODIFIED OLD *", "VN", "Ubuntu", "app0", "user0")
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/update", err)
@@ -379,7 +379,7 @@ func TestResultResultSet_ColumnTypeDatabaseTypeName(t *testing.T) {
 	defer db.Close()
 	_initTest(db)
 
-	db.Exec(`CREATE TABLE tbltest WITH pk=id:string WITH rcu=1 WITH wcu=1`)
+	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
 	testData := map[string]struct {
 		val interface{}
 		typ string
@@ -407,7 +407,7 @@ func TestResultResultSet_ColumnTypeDatabaseTypeName(t *testing.T) {
 		"val_bool":   {val: true, typ: "BOOL"},
 		"val_bool_1": {val: types.AttributeValueMemberBOOL{Value: false}, typ: "BOOL"},
 	}
-	sql := `INSERT INTO "tbltest" VALUE {'id': 'myid'`
+	sql := fmt.Sprintf(`INSERT INTO "%s" VALUE {'id': 'myid'`, tblTestTemp)
 	params := make([]interface{}, 0)
 	for col, data := range testData {
 		sql += fmt.Sprintf(", '%s': ?", col)
@@ -419,7 +419,7 @@ func TestResultResultSet_ColumnTypeDatabaseTypeName(t *testing.T) {
 		t.Fatalf("%s failed: %s", testName+"/insert", err)
 	}
 
-	dbrows, err := db.Query(`SELECT * FROM "tbltest" WHERE id=?`, "myid")
+	dbrows, err := db.Query(fmt.Sprintf(`SELECT * FROM "%s" WHERE id=?`, tblTestTemp), "myid")
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/select", err)
 	}

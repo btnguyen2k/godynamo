@@ -39,12 +39,18 @@ type tableInfo struct {
 	lsi            map[string]lsiInfo
 }
 
+const (
+	tblTestNotExist  = "test_not_exist"
+	tblTestNotExists = "test_not_exists"
+	tblTestTemp      = "test_temp"
+)
+
 func _initTest(db *sql.DB) {
-	_, _ = db.Exec(`DROP TABLE IF EXISTS tblnotexist`)
-	_, _ = db.Exec(`DROP TABLE IF EXISTS tblnotexists`)
-	_, _ = db.Exec(`DROP TABLE IF EXISTS tbltest`)
+	_, _ = db.Exec(`DROP TABLE IF EXISTS ` + tblTestNotExist)
+	_, _ = db.Exec(`DROP TABLE IF EXISTS ` + tblTestNotExists)
+	_, _ = db.Exec(`DROP TABLE IF EXISTS ` + tblTestTemp)
 	for i := 0; i < 10; i++ {
-		_, _ = db.Exec(`DROP TABLE IF EXISTS tbltest` + strconv.Itoa(i))
+		_, _ = db.Exec(`DROP TABLE IF EXISTS ` + tblTestTemp + strconv.Itoa(i))
 	}
 }
 

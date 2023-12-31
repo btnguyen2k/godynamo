@@ -1,6 +1,7 @@
 package godynamo_test
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -12,7 +13,7 @@ func Test_Query_CreateTable(t *testing.T) {
 	db := _openDb(t, testName)
 	defer db.Close()
 
-	_, err := db.Query("CREATE TABLE tbltemp WITH pk=id:string")
+	_, err := db.Query(fmt.Sprintf("CREATE TABLE %s WITH pk=id:string", tblTestTemp))
 	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
 		t.Fatalf("%s failed: expected 'not support' error, but received %#v", testName, err)
 	}
@@ -30,22 +31,22 @@ func Test_Exec_CreateTable_Query_DescribeTable(t *testing.T) {
 		tableInfo    *tableInfo
 		affectedRows int64
 	}{
-		{name: "basic", sql: `CREATE TABLE tbltest1 WITH PK=id:string`, affectedRows: 1, tableInfo: &tableInfo{tableName: "tbltest1",
-			billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "S"}},
-		{name: "if_not_exists", sql: `CREATE TABLE IF NOT EXISTS tbltest1 WITH PK=id:NUMBER`, affectedRows: 0, tableInfo: &tableInfo{tableName: "tbltest1",
-			billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "S"}},
-		{name: "with_sk", sql: `CREATE TABLE tbltest2 WITH PK=id:binary WITH sk=grade:number, WITH class=standard`, affectedRows: 1, tableInfo: &tableInfo{tableName: "tbltest2",
-			billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "B", skAttr: "grade", skType: "N"}},
-		{name: "with_rcu_wcu", sql: `CREATE TABLE tbltest3 WITH PK=id:number WITH rcu=1 WITH wcu=2 WITH class=standard_ia`, affectedRows: 1, tableInfo: &tableInfo{tableName: "tbltest3",
-			billingMode: "", wcu: 2, rcu: 1, pkAttr: "id", pkType: "N"}},
-		{name: "with_lsi", sql: `CREATE TABLE tbltest4 WITH PK=id:binary WITH SK=username:string WITH LSI=index1:grade:number, WITH LSI=index2:dob:string:*, WITH LSI=index3:yob:binary:a,b,c`, affectedRows: 1, tableInfo: &tableInfo{tableName: "tbltest4",
-			billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "B", skAttr: "username", skType: "S",
-			lsi: map[string]lsiInfo{
-				"index1": {projType: "KEYS_ONLY", lsiDef: lsiDef{indexName: "index1", attrName: "grade", attrType: "N"}},
-				"index2": {projType: "ALL", lsiDef: lsiDef{indexName: "index2", attrName: "dob", attrType: "S"}},
-				"index3": {projType: "INCLUDE", lsiDef: lsiDef{indexName: "index3", attrName: "yob", attrType: "B", projectedAttrs: "a,b,c"}},
-			},
-		}},
+		{name: "basic", sql: fmt.Sprintf(`CREATE TABLE %s WITH PK=id:string`, tblTestTemp+"1"), affectedRows: 1,
+			tableInfo: &tableInfo{tableName: tblTestTemp + "1", billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "S"}},
+		{name: "if_not_exists", sql: fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s WITH PK=id:NUMBER`, tblTestTemp+"1"), affectedRows: 0,
+			tableInfo: &tableInfo{tableName: tblTestTemp + "1", billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "S"}},
+		{name: "with_sk", sql: fmt.Sprintf(`CREATE TABLE %s WITH PK=id:binary WITH sk=grade:number, WITH class=standard`, tblTestTemp+"2"), affectedRows: 1,
+			tableInfo: &tableInfo{tableName: tblTestTemp + "2", billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "B", skAttr: "grade", skType: "N"}},
+		{name: "with_rcu_wcu", sql: fmt.Sprintf(`CREATE TABLE %s WITH PK=id:number WITH rcu=1 WITH wcu=2 WITH class=standard_ia`, tblTestTemp+"3"), affectedRows: 1,
+			tableInfo: &tableInfo{tableName: tblTestTemp + "3", billingMode: "", wcu: 2, rcu: 1, pkAttr: "id", pkType: "N"}},
+		{name: "with_lsi", sql: fmt.Sprintf(`CREATE TABLE %s WITH PK=id:binary WITH SK=username:string WITH LSI=index1:grade:number, WITH LSI=index2:dob:string:*, WITH LSI=index3:yob:binary:a,b,c`, tblTestTemp+"4"), affectedRows: 1,
+			tableInfo: &tableInfo{tableName: tblTestTemp + "4", billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "B", skAttr: "username", skType: "S",
+				lsi: map[string]lsiInfo{
+					"index1": {projType: "KEYS_ONLY", lsiDef: lsiDef{indexName: "index1", attrName: "grade", attrType: "N"}},
+					"index2": {projType: "ALL", lsiDef: lsiDef{indexName: "index2", attrName: "dob", attrType: "S"}},
+					"index3": {projType: "INCLUDE", lsiDef: lsiDef{indexName: "index3", attrName: "yob", attrType: "B", projectedAttrs: "a,b,c"}},
+				},
+			}},
 	}
 
 	for _, testCase := range testData {
@@ -65,7 +66,7 @@ func Test_Exec_CreateTable_Query_DescribeTable(t *testing.T) {
 			if testCase.tableInfo == nil {
 				return
 			}
-			dbresult, err := db.Query(`DESCRIBE TABLE ` + testCase.tableInfo.tableName)
+			dbresult, err := db.Query(fmt.Sprintf(`DESCRIBE TABLE %s`, testCase.tableInfo.tableName))
 			if err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/describe_table", err)
 			}
@@ -95,9 +96,9 @@ func Test_Query_ListTables(t *testing.T) {
 	_initTest(db)
 	defer db.Close()
 
-	tableList := []string{"tbltest2", "tbltest1", "tbltest3", "tbltest0"}
+	tableList := []string{tblTestTemp + "2", tblTestTemp + "1", tblTestTemp + "3", tblTestTemp + "0"}
 	for _, tbl := range tableList {
-		db.Exec("CREATE TABLE " + tbl + " WITH PK=id:string")
+		db.Exec(fmt.Sprintf("CREATE TABLE %s WITH PK=id:string", tbl))
 	}
 
 	dbresult, err := db.Query(`LIST TABLES`)
@@ -109,12 +110,13 @@ func Test_Query_ListTables(t *testing.T) {
 		t.Fatalf("%s failed: %s", testName+"/fetch_rows", err)
 	}
 	if len(rows) != 4 {
+		fmt.Printf("[DEBUG] %#v\n", rows)
 		t.Fatalf("%s failed: expected 4 rows but received %d", testName+"/fetch_rows", len(rows))
 	}
 	for i := 0; i < 4; i++ {
 		tblname := rows[i]["$1"].(string)
-		if tblname != "tbltest"+strconv.Itoa(i) {
-			t.Fatalf("%s failed: expected row #%d to be %#v but received %#v", testName+"/fetch_rows", i, "tbltemp"+strconv.Itoa(i), tblname)
+		if tblname != tblTestTemp+strconv.Itoa(i) {
+			t.Fatalf("%s failed: expected row #%d to be %#v but received %#v", testName+"/fetch_rows", i, tblTestTemp+strconv.Itoa(i), tblname)
 		}
 	}
 }
@@ -124,7 +126,7 @@ func Test_Query_AlterTable(t *testing.T) {
 	db := _openDb(t, testName)
 	defer db.Close()
 
-	_, err := db.Query("ALTER TABLE tbltemp WITH wcu=0 WITH rcu=0")
+	_, err := db.Query(fmt.Sprintf("ALTER TABLE %s WITH wcu=0 WITH rcu=0", tblTestTemp))
 	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
 		t.Fatalf("%s failed: expected 'not support' error, but received %#v", testName, err)
 	}
@@ -136,17 +138,17 @@ func Test_Exec_AlterTable(t *testing.T) {
 	_initTest(db)
 	defer db.Close()
 
-	db.Exec(`CREATE TABLE tbltest WITH PK=id:string`)
+	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=id:string`, tblTestTemp))
 	testData := []struct {
 		name         string
 		sql          string
 		tableInfo    *tableInfo
 		affectedRows int64
 	}{
-		{name: "change_wcu_rcu_provisioned", sql: `ALTER TABLE tbltest WITH wcu=3 WITH rcu=5`, affectedRows: 1, tableInfo: &tableInfo{tableName: "tbltest",
-			billingMode: "PROVISIONED", wcu: 3, rcu: 5, pkAttr: "id", pkType: "S"}},
-		{name: "change_wcu_rcu_on_demand", sql: `ALTER TABLE tbltest WITH wcu=0 WITH rcu=0`, affectedRows: 1, tableInfo: &tableInfo{tableName: "tbltest",
-			billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "S"}},
+		{name: "change_wcu_rcu_provisioned", sql: fmt.Sprintf(`ALTER TABLE %s WITH wcu=3 WITH rcu=5`, tblTestTemp), affectedRows: 1,
+			tableInfo: &tableInfo{tableName: tblTestTemp, billingMode: "PROVISIONED", wcu: 3, rcu: 5, pkAttr: "id", pkType: "S"}},
+		{name: "change_wcu_rcu_on_demand", sql: fmt.Sprintf(`ALTER TABLE %s WITH wcu=0 WITH rcu=0`, tblTestTemp), affectedRows: 1,
+			tableInfo: &tableInfo{tableName: tblTestTemp, billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "S"}},
 		// DynamoDB Docker version does not support changing table class
 	}
 
@@ -167,7 +169,7 @@ func Test_Exec_AlterTable(t *testing.T) {
 			if testCase.tableInfo == nil {
 				return
 			}
-			dbresult, err := db.Query(`DESCRIBE TABLE ` + testCase.tableInfo.tableName)
+			dbresult, err := db.Query(fmt.Sprintf(`DESCRIBE TABLE %s`, testCase.tableInfo.tableName))
 			if err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/describe_table", err)
 			}
@@ -185,7 +187,7 @@ func Test_Query_DropTable(t *testing.T) {
 	db := _openDb(t, testName)
 	defer db.Close()
 
-	_, err := db.Query("DROP TABLE tbltemp")
+	_, err := db.Query(fmt.Sprintf("DROP TABLE %s", tblTestTemp))
 	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
 		t.Fatalf("%s failed: expected 'not support' error, but received %#v", testName, err)
 	}
@@ -197,14 +199,14 @@ func Test_Exec_DropTable(t *testing.T) {
 	_initTest(db)
 	defer db.Close()
 
-	db.Exec(`CREATE TABLE tbltest WITH PK=id:string`)
+	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=id:string`, tblTestTemp))
 	testData := []struct {
 		name         string
 		sql          string
 		affectedRows int64
 	}{
-		{name: "basic", sql: `DROP TABLE tbltest`, affectedRows: 1},
-		{name: "if_exists", sql: `DROP TABLE IF EXISTS tbltest`, affectedRows: 0},
+		{name: "basic", sql: fmt.Sprintf(`DROP TABLE %s`, tblTestTemp), affectedRows: 1},
+		{name: "if_exists", sql: fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp), affectedRows: 0},
 	}
 
 	for _, testCase := range testData {
@@ -229,7 +231,7 @@ func Test_Exec_DescribeTable(t *testing.T) {
 	db := _openDb(t, testName)
 	defer db.Close()
 
-	_, err := db.Exec("DESCRIBE TABLE tbltemp")
+	_, err := db.Exec(fmt.Sprintf("DESCRIBE TABLE %s", tblTestTemp))
 	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
 		t.Fatalf("%s failed: expected 'not support' error, but received %#v", testName, err)
 	}
@@ -270,11 +272,11 @@ func TestRowsDescribeTable_ColumnTypeDatabaseTypeName(t *testing.T) {
 		"TableStatus":               {srcType: "S", scanType: typeS},
 	}
 
-	_, err := db.Exec(`CREATE TABLE tbltest WITH PK=id:string`)
+	_, err := db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=id:string`, tblTestTemp))
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/createTable", err)
 	}
-	dbresult, err := db.Query(`DESCRIBE TABLE tbltest`)
+	dbresult, err := db.Query(fmt.Sprintf(`DESCRIBE TABLE %s`, tblTestTemp))
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/describeTable", err)
 	}
