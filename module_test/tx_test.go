@@ -1,6 +1,7 @@
 package godynamo_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -11,13 +12,13 @@ func TestTx_Rollback(t *testing.T) {
 	defer db.Close()
 	_initTest(db)
 
-	db.Exec(`CREATE TABLE tbltest WITH pk=id:string WITH rcu=1 WITH wcu=1`)
+	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
 
 	tx, err := db.Begin()
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_, err = tx.Exec(`INSERT INTO "tbltest" VALUE {'id': ?, 'active': ?}`, "1", true)
+	_, err = tx.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'id': ?, 'active': ?}`, tblTestTemp), "1", true)
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/tx-exec", err)
 	}
@@ -26,7 +27,7 @@ func TestTx_Rollback(t *testing.T) {
 		t.Fatalf("%s failed: %s", testName+"/tx-rollback", err)
 	}
 
-	dbresult, err := db.Query(`SELECT * FROM "tbltest"`)
+	dbresult, err := db.Query(fmt.Sprintf(`SELECT * FROM "%s"`, tblTestTemp))
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/query", err)
 	}
@@ -45,17 +46,17 @@ func TestTx_Commit_Insert(t *testing.T) {
 	defer db.Close()
 	_initTest(db)
 
-	db.Exec(`CREATE TABLE tbltest WITH pk=id:string WITH rcu=1 WITH wcu=1`)
+	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
 
 	tx, err := db.Begin()
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	result1, err1 := tx.Exec(`INSERT INTO "tbltest" VALUE {'id': ?, 'active': ?}`, "1", true)
+	result1, err1 := tx.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'id': ?, 'active': ?}`, tblTestTemp), "1", true)
 	if err1 != nil {
 		t.Fatalf("%s failed: %s", testName+"/tx-exec", err)
 	}
-	result2, err2 := tx.Exec(`INSERT INTO "tbltest" VALUE {'id': ?, 'grade': ?}`, "2", 2)
+	result2, err2 := tx.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'id': ?, 'grade': ?}`, tblTestTemp), "2", 2)
 	if err2 != nil {
 		t.Fatalf("%s failed: %s", testName+"/tx-exec", err)
 	}
@@ -88,7 +89,7 @@ func TestTx_Commit_Insert(t *testing.T) {
 		t.Fatalf("%s failed: expected 'not support' error, but received %s", testName+"/last_insert_id", err)
 	}
 
-	dbresult, err := db.Query(`SELECT * FROM "tbltest"`)
+	dbresult, err := db.Query(fmt.Sprintf(`SELECT * FROM "%s"`, tblTestTemp))
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/query", err)
 	}
@@ -107,19 +108,19 @@ func TestTx_Commit_UpdateDelete(t *testing.T) {
 	defer db.Close()
 	_initTest(db)
 
-	db.Exec(`CREATE TABLE tbltest WITH pk=id:string WITH rcu=1 WITH wcu=1`)
-	db.Exec(`INSERT INTO "tbltest" VALUE {'id': ?, 'active': ?}`, "1", true)
-	db.Exec(`INSERT INTO "tbltest" VALUE {'id': ?, 'grade': ?}`, "2", 2)
+	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
+	db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'id': ?, 'active': ?}`, tblTestTemp), "1", true)
+	db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'id': ?, 'grade': ?}`, tblTestTemp), "2", 2)
 
 	tx, err := db.Begin()
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	result1, err1 := tx.Exec(`UPDATE "tbltest" SET duration=? WHERE "id"=?`, 1.2, "2")
+	result1, err1 := tx.Exec(fmt.Sprintf(`UPDATE "%s" SET duration=? WHERE "id"=?`, tblTestTemp), 1.2, "2")
 	if err1 != nil {
 		t.Fatalf("%s failed: %s", testName+"/tx-exec", err)
 	}
-	result2, err2 := tx.Exec(`DELETE FROM "tbltest" WHERE "id"=?`, "1")
+	result2, err2 := tx.Exec(fmt.Sprintf(`DELETE FROM "%s" WHERE "id"=?`, tblTestTemp), "1")
 	if err2 != nil {
 		t.Fatalf("%s failed: %s", testName+"/tx-exec", err)
 	}
@@ -144,7 +145,7 @@ func TestTx_Commit_UpdateDelete(t *testing.T) {
 		t.Fatalf("%s failed: expected row-affected to be 1 but received %#v", testName+"/row_affected", ra2)
 	}
 
-	dbresult, err := db.Query(`SELECT * FROM "tbltest"`)
+	dbresult, err := db.Query(fmt.Sprintf(`SELECT * FROM "%s"`, tblTestTemp))
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/query", err)
 	}
