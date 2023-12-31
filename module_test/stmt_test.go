@@ -2,7 +2,9 @@ package godynamo_test
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"reflect"
 	"strconv"
 	"strings"
@@ -78,39 +80,59 @@ func _verifyTableInfo(t *testing.T, testName string, row map[string]interface{},
 		t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName, key, tableInfo.wcu, wcu)
 	}
 
-	key = "KeySchema[0].AttributeName"
-	pkAttr, _ := s.GetValueOfType(key, reddo.TypeString)
-	if pkAttr != tableInfo.pkAttr {
-		t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName, key, tableInfo.pkAttr, pkAttr)
+	keySchema := make([]types.KeySchemaElement, 0)
+	{
+		js, _ := json.Marshal(row["KeySchema"])
+		_ = json.Unmarshal(js, &keySchema)
+		found := false
+		for _, keySchemaElement := range keySchema {
+			if *keySchemaElement.AttributeName == tableInfo.pkAttr {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("%s failed: table PK is expected to be %#v but not found", testName, tableInfo.pkAttr)
+		}
 	}
 
-	key = "AttributeDefinitions[0].AttributeName"
-	pkName, _ := s.GetValueOfType(key, reddo.TypeString)
-	if pkName != tableInfo.pkAttr {
-		t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName, key, tableInfo.pkAttr, pkName)
-	}
-	key = "AttributeDefinitions[0].AttributeType"
-	pkType, _ := s.GetValueOfType(key, reddo.TypeString)
-	if pkType != tableInfo.pkType {
-		t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName, key, tableInfo.pkType, pkType)
+	attrDefs := make([]types.AttributeDefinition, 0)
+	{
+		js, _ := json.Marshal(row["AttributeDefinitions"])
+		_ = json.Unmarshal(js, &attrDefs)
+		found := false
+		for _, attrDefElement := range attrDefs {
+			if *attrDefElement.AttributeName == tableInfo.pkAttr && string(attrDefElement.AttributeType) == tableInfo.pkType {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("%s failed: PK field %s be of type %#v but not found", testName, tableInfo.pkAttr, tableInfo.pkType)
+		}
 	}
 
 	if tableInfo.skAttr != "" {
-		key = "KeySchema[1].AttributeName"
-		skAttr, _ := s.GetValueOfType(key, reddo.TypeString)
-		if skAttr != tableInfo.skAttr {
-			t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName, key, tableInfo.skAttr, skAttr)
+		found := false
+		for _, keySchemaElement := range keySchema {
+			if *keySchemaElement.AttributeName == tableInfo.skAttr {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("%s failed: table SK is expected to be %#v but not found", testName, tableInfo.skAttr)
 		}
 
-		key = "AttributeDefinitions[1].AttributeName"
-		skName, _ := s.GetValueOfType(key, reddo.TypeString)
-		if skName != tableInfo.skAttr {
-			t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName, key, tableInfo.skAttr, skName)
+		found = false
+		for _, attrDefElement := range attrDefs {
+			if *attrDefElement.AttributeName == tableInfo.skAttr && string(attrDefElement.AttributeType) == tableInfo.skType {
+				found = true
+				break
+			}
 		}
-		key = "AttributeDefinitions[1].AttributeType"
-		skType, _ := s.GetValueOfType(key, reddo.TypeString)
-		if skType != tableInfo.skType {
-			t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName, key, tableInfo.skType, skType)
+		if !found {
+			t.Fatalf("%s failed: SK field %s be of type %#v but not found", testName, tableInfo.skAttr, tableInfo.skType)
 		}
 	}
 

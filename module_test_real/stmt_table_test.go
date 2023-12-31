@@ -1,9 +1,12 @@
 package godynamo_test
 
 import (
+	"context"
 	"fmt"
+	"github.com/btnguyen2k/godynamo"
 	"strings"
 	"testing"
+	"time"
 )
 
 func Test_Query_CreateTable(t *testing.T) {
@@ -64,7 +67,15 @@ func Test_Exec_CreateTable_Query_DescribeTable(t *testing.T) {
 			if testCase.tableInfo == nil {
 				return
 			}
-			dbresult, err := db.Query(`DESCRIBE TABLE ` + testCase.tableInfo.tableName)
+
+			ctx, cancelF := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancelF()
+			err = godynamo.WaitForTableStatus(ctx, db, testCase.tableInfo.tableName, []string{"ACTIVE"}, 500*time.Millisecond)
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/WaitForTableStatus", err)
+			}
+
+			dbresult, err := db.Query(fmt.Sprintf(`DESCRIBE TABLE %s`, testCase.tableInfo.tableName))
 			if err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/describe_table", err)
 			}
