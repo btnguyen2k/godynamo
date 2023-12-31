@@ -224,3 +224,42 @@ func WaitForGSIStatus(ctx context.Context, db *sql.DB, tableName, gsiName string
 		}
 	}
 }
+
+// WaitForTableStatus periodically checks if table status reaches a desired value, or timeout.
+//
+//   - statusList: list of desired statuses. This function returns nil if one of the desired statuses is reached.
+//   - delay: sleep for this amount of time after each status check. Supplied value of 0 or negative means 'no sleep'.
+//   - timeout is controlled via ctx.
+//   - Note: this function treats table status as "" if it does not exist. Thus, supply value "" to statusList to wait for table to be deleted.
+//
+// @Available since <<VERSION>>
+func WaitForTableStatus(ctx context.Context, db *sql.DB, tableName string, statusList []string, sleepTime time.Duration) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			dbrows, err := db.Query(fmt.Sprintf(`DESCRIBE TABLE %s`, tableName))
+			if err != nil {
+				return err
+			}
+			rows, err := _fetchAllRowsAndClose(dbrows)
+			if err != nil {
+				return err
+			}
+			status := ""
+			if len(rows) > 0 {
+				status, _ = rows[0]["TableStatus"].(string)
+			}
+			if g18.FindInSlice(status, statusList) >= 0 {
+				return nil
+			}
+			if sleepTime > 0 {
+				time.Sleep(sleepTime)
+			}
+		}
+	}
+}

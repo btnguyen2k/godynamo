@@ -136,6 +136,51 @@ func TestWaitForGSIStatus(t *testing.T) {
 				t.Fatalf("%s failed: WaitForGSIStatus must fail", testName+"/"+testCase.name)
 			}
 			if testCase.mustError {
+				fmt.Printf("[DEBUG] %T - %s\n", err, err)
+				return
+			}
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name, err)
+			}
+		})
+	}
+}
+
+func TestWaitForTableStatus(t *testing.T) {
+	testName := "TestWaitForTableStatus"
+	db := _openDb(t, testName)
+	defer func() { _ = db.Close() }()
+	_initTest(db)
+
+	testData := []struct {
+		name       string
+		sql        string
+		tableName  string
+		statusList []string
+		mustError  bool
+	}{
+		{name: "create_table", sql: fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp),
+			tableName: tblTestTemp, statusList: []string{"ACTIVE"}},
+		{name: "drop_table", sql: fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp),
+			tableName: tblTestTemp, statusList: []string{""}},
+		{name: "not_exists", mustError: true, tableName: tblTestTemp, statusList: []string{"ACTIVE"}},
+	}
+	for _, testCase := range testData {
+		t.Run(testCase.name, func(t *testing.T) {
+			if testCase.sql != "" {
+				_, err := db.Exec(testCase.sql)
+				if err != nil {
+					t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/exec", err)
+				}
+			}
+			ctx, cancelF := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancelF()
+			err := godynamo.WaitForTableStatus(ctx, db, testCase.tableName, testCase.statusList, 100*time.Millisecond)
+			if testCase.mustError && err == nil {
+				t.Fatalf("%s failed: WaitForGSIStatus must fail", testName+"/"+testCase.name)
+			}
+			if testCase.mustError {
+				fmt.Printf("[DEBUG] %T - %s\n", err, err)
 				return
 			}
 			if err != nil {
