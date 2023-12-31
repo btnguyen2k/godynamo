@@ -138,7 +138,7 @@ func _fetchAllRowsAndClose(dbRows *sql.Rows) ([]map[string]interface{}, error) {
 //   - Other than the above, the value is kept as-is! It is the caller's responsibility to ensure the value is valid.
 //   - PartiQL syntax for INSERT statement: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.insert.html
 //
-// @Available since <<VERSION>>
+// @Available since v1.1.0
 func TransformInsertStmToPartiQL(insStm string) (string, error) {
 	insSql := strings.TrimSpace(insStm)
 	if !reSqlInsert.MatchString(insSql) {
@@ -193,7 +193,7 @@ func TransformInsertStmToPartiQL(insStm string) (string, error) {
 //   - timeout is controlled via ctx.
 //   - Note: this function treats GSI status as "" if it does not exist. Thus, supply value "" to statusList to wait for GSI to be deleted.
 //
-// @Available since <<VERSION>>
+// @Available since v1.1.0
 func WaitForGSIStatus(ctx context.Context, db *sql.DB, tableName, gsiName string, statusList []string, sleepTime time.Duration) error {
 	if ctx == nil {
 		ctx = context.Background()
@@ -232,7 +232,7 @@ func WaitForGSIStatus(ctx context.Context, db *sql.DB, tableName, gsiName string
 //   - timeout is controlled via ctx.
 //   - Note: this function treats table status as "" if it does not exist. Thus, supply value "" to statusList to wait for table to be deleted.
 //
-// @Available since <<VERSION>>
+// @Available since v1.1.0
 func WaitForTableStatus(ctx context.Context, db *sql.DB, tableName string, statusList []string, sleepTime time.Duration) error {
 	if ctx == nil {
 		ctx = context.Background()
