@@ -14,7 +14,7 @@ import (
 func Test_Exec_DescribeLSI(t *testing.T) {
 	testName := "Test_Exec_DescribeLSI"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, err := db.Exec(fmt.Sprintf("DESCRIBE LSI idxname ON %s", tblTestTemp))
 	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
@@ -26,7 +26,7 @@ func Test_Query_DescribeLSI(t *testing.T) {
 	testName := "Test_Query_DescribeLSI"
 	db := _openDb(t, testName)
 	_initTest(db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, err := db.Exec(fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s WITH PK=app:string WITH SK=user:string WITH LSI=idxtime:timestamp:number WITH LSI=idxbrowser:browser:string:* WITH LSI=idxos:os:string:os_name,os_version`, tblTestTemp))
 	if err != nil {
@@ -105,7 +105,7 @@ func Test_Query_DescribeLSI(t *testing.T) {
 func Test_Query_CreateGSI(t *testing.T) {
 	testName := "Test_Query_CreateGSI"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, err := db.Query(fmt.Sprintf("CREATE GSI idx ON %s WITH pk=id:string", tblTestTemp))
 	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
@@ -116,10 +116,10 @@ func Test_Query_CreateGSI(t *testing.T) {
 func Test_Exec_CreateGSI(t *testing.T) {
 	testName := "Test_Exec_CreateGSI"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	_initTest(db)
 
-	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
 
 	testData := []struct {
 		name         string
@@ -170,7 +170,7 @@ func Test_Exec_CreateGSI(t *testing.T) {
 func Test_Query_AlterGSI(t *testing.T) {
 	testName := "Test_Query_AlterGSI"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, err := db.Query(fmt.Sprintf("ALTER GSI idx ON %s WITH wcu=1 WITH rcu=2", tblTestTemp))
 	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
@@ -181,11 +181,11 @@ func Test_Query_AlterGSI(t *testing.T) {
 func Test_Exec_AlterGSI(t *testing.T) {
 	testName := "Test_Exec_AlterGSI"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	_initTest(db)
 
-	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
-	db.Exec(fmt.Sprintf(`CREATE GSI idxtest ON %s WITH pk=grade:number WITH rcu=3 WITH wcu=4`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE GSI idxtest ON %s WITH pk=grade:number WITH rcu=3 WITH wcu=4`, tblTestTemp))
 	time.Sleep(3 * time.Second)
 
 	testData := []struct {
@@ -231,7 +231,7 @@ func Test_Exec_AlterGSI(t *testing.T) {
 func Test_Exec_DescribeGSI(t *testing.T) {
 	testName := "Test_Exec_DescribeGSI"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, err := db.Exec(fmt.Sprintf("DESCRIBE GSI idxname ON %s", tblTestTemp))
 	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
@@ -243,12 +243,12 @@ func Test_Query_DescribeGSI(t *testing.T) {
 	testName := "Test_Query_DescribeGSI"
 	db := _openDb(t, testName)
 	_initTest(db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
-	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=2`, tblTestTemp))
-	db.Exec(fmt.Sprintf(`CREATE GSI idxtime ON %s WITH pk=time:number WITH rcu=3 WITH wcu=4`, tblTestTemp))
-	db.Exec(fmt.Sprintf(`CREATE GSI idxbrowser ON %s WITH pk=os:binary WITH SK=version:string WITH rcu=5 WITH wcu=6 WITH projection=*`, tblTestTemp))
-	db.Exec(fmt.Sprintf(`CREATE GSI idxplatform ON %s WITH pk=platform:string WITH rcu=7 WITH wcu=8 WITH projection=a,b,c`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=2`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE GSI idxtime ON %s WITH pk=time:number WITH rcu=3 WITH wcu=4`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE GSI idxbrowser ON %s WITH pk=os:binary WITH SK=version:string WITH rcu=5 WITH wcu=6 WITH projection=*`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE GSI idxplatform ON %s WITH pk=platform:string WITH rcu=7 WITH wcu=8 WITH projection=a,b,c`, tblTestTemp))
 	time.Sleep(3 * time.Second)
 
 	testData := []struct {
@@ -326,7 +326,7 @@ func Test_Query_DescribeGSI(t *testing.T) {
 func Test_Query_DropGSI(t *testing.T) {
 	testName := "Test_Query_DropGSI"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, err := db.Query(fmt.Sprintf("DROP GSI idxname ON %s", tblTestTemp))
 	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
@@ -338,12 +338,12 @@ func Test_Exec_DropGSI(t *testing.T) {
 	testName := "Test_Exec_DropGSI"
 	db := _openDb(t, testName)
 	_initTest(db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
-	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=2`, tblTestTemp))
-	db.Exec(fmt.Sprintf(`CREATE GSI idxtime ON %s WITH pk=time:number WITH rcu=3 WITH wcu=4`, tblTestTemp))
-	db.Exec(fmt.Sprintf(`CREATE GSI idxbrowser ON %s WITH pk=os:binary WITH SK=version:string WITH rcu=5 WITH wcu=6 WITH projection=*`, tblTestTemp))
-	db.Exec(fmt.Sprintf(`CREATE GSI idxplatform ON %s WITH pk=platform:string WITH rcu=7 WITH wcu=8 WITH projection=a,b,c`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=2`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE GSI idxtime ON %s WITH pk=time:number WITH rcu=3 WITH wcu=4`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE GSI idxbrowser ON %s WITH pk=os:binary WITH SK=version:string WITH rcu=5 WITH wcu=6 WITH projection=*`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE GSI idxplatform ON %s WITH pk=platform:string WITH rcu=7 WITH wcu=8 WITH projection=a,b,c`, tblTestTemp))
 	time.Sleep(3 * time.Second)
 
 	testData := []struct {
@@ -386,7 +386,7 @@ func TestRowsDescribeIndex_ColumnTypeDatabaseTypeName_LSI(t *testing.T) {
 	testName := "TestRowsDescribeIndex_ColumnTypeDatabaseTypeName_LSI"
 	db := _openDb(t, testName)
 	_initTest(db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	expected := map[string]struct {
 		scanType reflect.Type
@@ -426,7 +426,7 @@ func TestRowsDescribeIndex_ColumnTypeDatabaseTypeName_GSI(t *testing.T) {
 	testName := "TestRowsDescribeIndex_ColumnTypeDatabaseTypeName_GSI"
 	db := _openDb(t, testName)
 	_initTest(db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	expected := map[string]struct {
 		scanType reflect.Type

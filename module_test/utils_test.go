@@ -1,8 +1,11 @@
 package godynamo_test
 
 import (
+	"context"
+	"fmt"
 	"github.com/btnguyen2k/godynamo"
 	"testing"
+	"time"
 )
 
 func TestTransformInsertStmToPartiQL(t *testing.T) {
@@ -93,6 +96,50 @@ func TestTransformInsertStmToPartiQL(t *testing.T) {
 			}
 			if testCase.expected != stmt {
 				t.Fatalf("%s failed:\nexpected %s\nreceived %s", testName+"/"+testCase.name, testCase.expected, stmt)
+			}
+		})
+	}
+}
+
+func TestWaitForGSIStatus(t *testing.T) {
+	testName := "TestWaitForGSIStatus"
+	db := _openDb(t, testName)
+	defer func() { _ = db.Close() }()
+	_initTest(db)
+
+	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
+	testData := []struct {
+		name               string
+		sql                string
+		tableName, gsiName string
+		statusList         []string
+		mustError          bool
+	}{
+		{name: "create_gsi", sql: fmt.Sprintf(`CREATE GSI index1 ON %s WITH PK=grade:number WITH wcu=1 WITH rcu=2`, tblTestTemp),
+			tableName: tblTestTemp, gsiName: "index1", statusList: []string{"ACTIVE"}},
+		{name: "drop_gsi", sql: fmt.Sprintf(`DROP GSI index1 ON %s`, tblTestTemp),
+			tableName: tblTestTemp, gsiName: "index1", statusList: []string{""}},
+		{name: "not_exists", mustError: true, tableName: tblTestTemp, gsiName: "idxnotexist", statusList: []string{"ACTIVE"}},
+	}
+	for _, testCase := range testData {
+		t.Run(testCase.name, func(t *testing.T) {
+			if testCase.sql != "" {
+				_, err := db.Exec(testCase.sql)
+				if err != nil {
+					t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/exec", err)
+				}
+			}
+			ctx, cancelF := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancelF()
+			err := godynamo.WaitForGSIStatus(ctx, db, testCase.tableName, testCase.gsiName, testCase.statusList, 100*time.Millisecond)
+			if testCase.mustError && err == nil {
+				t.Fatalf("%s failed: WaitForGSIStatus must fail", testName+"/"+testCase.name)
+			}
+			if testCase.mustError {
+				return
+			}
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name, err)
 			}
 		})
 	}

@@ -21,5 +21,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.18.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.10.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.8.10 // indirect
+	github.com/btnguyen2k/consu/g18 v0.0.2 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 )

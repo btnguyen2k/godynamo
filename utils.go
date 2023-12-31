@@ -1,12 +1,16 @@
 package godynamo
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/btnguyen2k/consu/g18"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var (
@@ -91,6 +95,35 @@ func _parseValue(input string, separator rune) (value interface{}, leftOver stri
 	return nil, input, errors.New("cannot parse query, invalid token at: " + input)
 }
 
+func _fetchAllRowsAndClose(dbRows *sql.Rows) ([]map[string]interface{}, error) {
+	defer func() { _ = dbRows.Close() }()
+
+	colTypes, err := dbRows.ColumnTypes()
+	if err != nil {
+		return nil, err
+	}
+
+	numCols := len(colTypes)
+	rows := make([]map[string]interface{}, 0)
+	for dbRows.Next() {
+		vals := make([]interface{}, numCols)
+		scanVals := make([]interface{}, numCols)
+		for i := 0; i < numCols; i++ {
+			scanVals[i] = &vals[i]
+		}
+		if err := dbRows.Scan(scanVals...); err == nil {
+			row := make(map[string]interface{})
+			for i := range colTypes {
+				row[colTypes[i].Name()] = vals[i]
+			}
+			rows = append(rows, row)
+		} else if !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+	}
+	return rows, nil
+}
+
 // TransformInsertStmToPartiQL converts an INSERT statement to a PartiQL statement.
 //
 // e.g. INSERT INTO table_name (field1, field2, field3) VALUES ('val1', ?, 3) will be converted to
@@ -151,4 +184,43 @@ func TransformInsertStmToPartiQL(insStm string) (string, error) {
 	// table name must be double-quoted (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.insert.html)
 	finalSql := fmt.Sprintf(`INSERT INTO "%s" VALUE {%s}`, tableName, strings.Join(fieldsAndVals, ", "))
 	return finalSql, nil
+}
+
+// WaitForGSIStatus periodically checks if table's GSI status reaches a desired value, or timeout.
+//
+//   - statusList: list of desired statuses. This function returns nil if one of the desired statuses is reached.
+//   - delay: sleep for this amount of time after each status check. Supplied value of 0 or negative means 'no sleep'.
+//   - timeout is controlled via ctx.
+//   - Note: this function treats GSI status as "" if it does not exist. Thus, supply value "" to statusList to wait for GSI to be deleted.
+//
+// @Available since <<VERSION>>
+func WaitForGSIStatus(ctx context.Context, db *sql.DB, tableName, gsiName string, statusList []string, sleepTime time.Duration) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			dbrows, err := db.Query(fmt.Sprintf(`DESCRIBE GSI %s ON %s`, gsiName, tableName))
+			if err != nil {
+				return err
+			}
+			rows, err := _fetchAllRowsAndClose(dbrows)
+			if err != nil {
+				return err
+			}
+			status := ""
+			if len(rows) > 0 {
+				status, _ = rows[0]["IndexStatus"].(string)
+			}
+			if g18.FindInSlice(status, statusList) >= 0 {
+				return nil
+			}
+			if sleepTime > 0 {
+				time.Sleep(sleepTime)
+			}
+		}
+	}
 }
