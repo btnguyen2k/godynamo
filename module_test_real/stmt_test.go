@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/btnguyen2k/godynamo"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/btnguyen2k/consu/reddo"
 	"github.com/btnguyen2k/consu/semita"
@@ -51,8 +53,10 @@ func _initTest(db *sql.DB) {
 	_, _ = db.Exec(`DROP TABLE IF EXISTS ` + tblTestNotExist)
 	_, _ = db.Exec(`DROP TABLE IF EXISTS ` + tblTestNotExists)
 	_, _ = db.Exec(`DROP TABLE IF EXISTS ` + tblTestTemp)
+	_ = godynamo.WaitForTableStatus(nil, db, tblTestTemp, []string{""}, 10*time.Second)
 	for i := 0; i < 10; i++ {
 		_, _ = db.Exec(`DROP TABLE IF EXISTS ` + tblTestTemp + strconv.Itoa(i))
+		_ = godynamo.WaitForTableStatus(nil, db, tblTestTemp+strconv.Itoa(i), []string{""}, 10*time.Second)
 	}
 }
 

@@ -1,5 +1,17 @@
 # godynamo release notes
 
+## 2023-12-31 - v1.1.0
+
+### Added/Refactoring
+
+- Add function WaitForTableStatus
+- Add function WaitForGSIStatus
+- Add method TransformInsertStmToPartiQL
+
+### Fixed/Improvement
+
+- Fix: empty LSI should be nil
+
 ## 2023-12-27 - v1.0.0
 
 ### Changed
