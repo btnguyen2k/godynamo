@@ -15,7 +15,7 @@ import (
 func Test_Query_Insert(t *testing.T) {
 	testName := "Test_Query_Insert"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, err := db.Query(fmt.Sprintf(`INSERT INTO %s VALUE {}`, tblTestTemp))
 	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
@@ -26,10 +26,10 @@ func Test_Query_Insert(t *testing.T) {
 func Test_Exec_Insert(t *testing.T) {
 	testName := "Test_Exec_Insert"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	_initTest(db)
 
-	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
 
 	testData := []struct {
 		name         string
@@ -66,7 +66,7 @@ func Test_Exec_Insert(t *testing.T) {
 func Test_Exec_Select(t *testing.T) {
 	testName := "Test_Exec_Select"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, err := db.Exec(fmt.Sprintf(`SELECT * FROM "%s" WHERE id='a'`, tblTestTemp))
 	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
@@ -77,7 +77,7 @@ func Test_Exec_Select(t *testing.T) {
 func Test_Query_Select(t *testing.T) {
 	testName := "Test_Query_Select"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	_initTest(db)
 
 	_, err := db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=3 WITH wcu=3`, tblTestTemp))
@@ -115,7 +115,7 @@ func Test_Query_Select(t *testing.T) {
 func Test_Query_Select_withLimit(t *testing.T) {
 	testName := "Test_Query_Select_withLimit"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	_initTest(db)
 
 	_, err := db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=5 WITH wcu=5`, tblTestTemp))
@@ -155,6 +155,9 @@ func Test_Query_Select_withLimit(t *testing.T) {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
 	if len(limitRows) != 2 {
+		for i, row := range limitRows {
+			fmt.Printf("%d: %#v\n", i, row)
+		}
 		t.Fatalf("%s failed: expected %#v row but received %#v", testName+"/select", 2, len(limitRows))
 	}
 }
@@ -162,12 +165,12 @@ func Test_Query_Select_withLimit(t *testing.T) {
 func Test_Exec_Delete(t *testing.T) {
 	testName := "Test_Exec_Delete"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	_initTest(db)
 
 	// setup table
-	db.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp))
-	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=5 WITH wcu=5`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=5 WITH wcu=5`, tblTestTemp))
 	_, err := db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'app': ?, 'user': ?, 'os': ?, 'active': ?, 'duration': ?}`, tblTestTemp), "app0", "user1", "Ubuntu", true, 12.34)
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/insert", err)
@@ -222,12 +225,12 @@ func Test_Exec_Delete(t *testing.T) {
 func Test_Query_Delete(t *testing.T) {
 	testName := "Test_Query_Delete"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	_initTest(db)
 
 	// setup table
-	db.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp))
-	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=5 WITH wcu=5`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=5 WITH wcu=5`, tblTestTemp))
 	_, err := db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'app': ?, 'user': ?, 'os': ?, 'active': ?, 'duration': ?}`, tblTestTemp), "app0", "user1", "Ubuntu", true, 12.34)
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/insert", err)
@@ -287,12 +290,12 @@ func Test_Query_Delete(t *testing.T) {
 func Test_Exec_Update(t *testing.T) {
 	testName := "Test_Exec_Update"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	_initTest(db)
 
 	// setup table
-	db.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp))
-	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=5 WITH wcu=5`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=5 WITH wcu=5`, tblTestTemp))
 	_, err := db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'app': ?, 'user': ?, 'platform': ?, 'location': ?}`, tblTestTemp), "app0", "user0", "Linux", "AU")
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/insert", err)
@@ -329,12 +332,12 @@ func Test_Exec_Update(t *testing.T) {
 func Test_Query_Update(t *testing.T) {
 	testName := "Test_Query_Update"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	_initTest(db)
 
 	// setup table
-	db.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp))
-	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=5 WITH wcu=5`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=5 WITH wcu=5`, tblTestTemp))
 	_, err := db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'app': ?, 'user': ?, 'platform': ?, 'location': ?}`, tblTestTemp), "app0", "user0", "Linux", "AU")
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/insert", err)
@@ -376,10 +379,10 @@ func Test_Query_Update(t *testing.T) {
 func TestResultResultSet_ColumnTypeDatabaseTypeName(t *testing.T) {
 	testName := "TestResultResultSet_ColumnTypeDatabaseTypeName"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	_initTest(db)
 
-	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
 	testData := map[string]struct {
 		val interface{}
 		typ string

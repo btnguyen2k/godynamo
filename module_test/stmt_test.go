@@ -3,12 +3,15 @@ package godynamo_test
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/btnguyen2k/godynamo"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/btnguyen2k/consu/reddo"
 	"github.com/btnguyen2k/consu/semita"
@@ -51,8 +54,10 @@ func _initTest(db *sql.DB) {
 	_, _ = db.Exec(`DROP TABLE IF EXISTS ` + tblTestNotExist)
 	_, _ = db.Exec(`DROP TABLE IF EXISTS ` + tblTestNotExists)
 	_, _ = db.Exec(`DROP TABLE IF EXISTS ` + tblTestTemp)
+	_ = godynamo.WaitForTableStatus(nil, db, tblTestTemp, []string{""}, 100*time.Millisecond)
 	for i := 0; i < 10; i++ {
 		_, _ = db.Exec(`DROP TABLE IF EXISTS ` + tblTestTemp + strconv.Itoa(i))
+		_ = godynamo.WaitForTableStatus(nil, db, tblTestTemp+strconv.Itoa(i), []string{""}, 100*time.Millisecond)
 	}
 }
 
@@ -259,7 +264,7 @@ func _fetchAllRows(dbRows *sql.Rows) ([]map[string]interface{}, error) {
 				row[colTypes[i].Name()] = vals[i]
 			}
 			rows = append(rows, row)
-		} else if err != sql.ErrNoRows {
+		} else if !errors.Is(err, sql.ErrNoRows) {
 			return nil, err
 		}
 	}
