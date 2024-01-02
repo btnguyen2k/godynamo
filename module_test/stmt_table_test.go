@@ -11,7 +11,7 @@ import (
 func Test_Query_CreateTable(t *testing.T) {
 	testName := "Test_Query_CreateTable"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, err := db.Query(fmt.Sprintf("CREATE TABLE %s WITH pk=id:string", tblTestTemp))
 	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
@@ -22,7 +22,7 @@ func Test_Query_CreateTable(t *testing.T) {
 func Test_Exec_CreateTable_Query_DescribeTable(t *testing.T) {
 	testName := "Test_Exec_CreateTable_Query_DescribeTable"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	_initTest(db)
 
 	testData := []struct {
@@ -82,7 +82,7 @@ func Test_Exec_CreateTable_Query_DescribeTable(t *testing.T) {
 func Test_Exec_ListTables(t *testing.T) {
 	testName := "Test_Exec_ListTables"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, err := db.Exec("LIST TABLES")
 	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
@@ -94,11 +94,11 @@ func Test_Query_ListTables(t *testing.T) {
 	testName := "Test_Query_ListTables"
 	db := _openDb(t, testName)
 	_initTest(db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	tableList := []string{tblTestTemp + "2", tblTestTemp + "1", tblTestTemp + "3", tblTestTemp + "0"}
 	for _, tbl := range tableList {
-		db.Exec(fmt.Sprintf("CREATE TABLE %s WITH PK=id:string", tbl))
+		_, _ = db.Exec(fmt.Sprintf("CREATE TABLE %s WITH PK=id:string", tbl))
 	}
 
 	dbresult, err := db.Query(`LIST TABLES`)
@@ -124,7 +124,7 @@ func Test_Query_ListTables(t *testing.T) {
 func Test_Query_AlterTable(t *testing.T) {
 	testName := "Test_Query_AlterTable"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, err := db.Query(fmt.Sprintf("ALTER TABLE %s WITH wcu=0 WITH rcu=0", tblTestTemp))
 	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
@@ -136,9 +136,9 @@ func Test_Exec_AlterTable(t *testing.T) {
 	testName := "Test_Exec_AlterTable"
 	db := _openDb(t, testName)
 	_initTest(db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
-	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=id:string`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=id:string`, tblTestTemp))
 	testData := []struct {
 		name         string
 		sql          string
@@ -185,7 +185,7 @@ func Test_Exec_AlterTable(t *testing.T) {
 func Test_Query_DropTable(t *testing.T) {
 	testName := "Test_Query_DropTable"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, err := db.Query(fmt.Sprintf("DROP TABLE %s", tblTestTemp))
 	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
@@ -197,9 +197,9 @@ func Test_Exec_DropTable(t *testing.T) {
 	testName := "Test_Exec_DropTable"
 	db := _openDb(t, testName)
 	_initTest(db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
-	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=id:string`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=id:string`, tblTestTemp))
 	testData := []struct {
 		name         string
 		sql          string
@@ -229,7 +229,7 @@ func Test_Exec_DropTable(t *testing.T) {
 func Test_Exec_DescribeTable(t *testing.T) {
 	testName := "Test_Exec_DescribeTable"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, err := db.Exec(fmt.Sprintf("DESCRIBE TABLE %s", tblTestTemp))
 	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
@@ -240,7 +240,7 @@ func Test_Exec_DescribeTable(t *testing.T) {
 func TestRowsDescribeTable_ColumnTypeDatabaseTypeName(t *testing.T) {
 	testName := "TestRowsDescribeTable_ColumnTypeDatabaseTypeName"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	_initTest(db)
 
 	expected := map[string]struct {

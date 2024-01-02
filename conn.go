@@ -131,16 +131,76 @@ func (c *Conn) executeContext(ctx context.Context, stmt *Stmt, values []driver.N
 	if len(params) > 0 {
 		input.Parameters = params
 	}
-
 	if consistentRead, ok := stmt.withOpts["CONSISTENT_READ"]; ok {
 		input.ConsistentRead = aws.Bool(consistentRead.FirstBool())
 	} else if consistentRead, ok = stmt.withOpts["CONSISTENTREAD"]; ok {
 		input.ConsistentRead = aws.Bool(consistentRead.FirstBool())
 	}
 
-	output, err := c.client.ExecuteStatement(c.ensureContext(ctx), input)
+	if !reSelect.MatchString(stmt.query) {
+		output, err := c.client.ExecuteStatement(c.ensureContext(ctx), input)
+		return func() *dynamodb.ExecuteStatementOutput {
+			return output
+		}, err
+	}
+
+	return c.executeSelectContext(ctx, stmt, input)
+}
+
+// SELECT query could be paged, need to fetch all pages
+func (c *Conn) executeSelectContext(ctx context.Context, stmt *Stmt, input *dynamodb.ExecuteStatementInput) (executeStatementOutputWrapper, error) {
+	ctx = c.ensureContext(ctx)
+	var firstOutput *dynamodb.ExecuteStatementOutput
+	var err error
+	var limitNumItems int32 = 0
+	if stmt.limit != nil {
+		limitNumItems = *stmt.limit
+	}
+	//idx := 0                         // FIXME
+	//fetched := make(map[string]bool) // FIXME
+	for {
+		var output *dynamodb.ExecuteStatementOutput
+		output, err = c.client.ExecuteStatement(ctx, input)
+		if err != nil {
+			return func() *dynamodb.ExecuteStatementOutput {
+				return output
+			}, err
+		}
+
+		//// FIXME
+		//idx++
+		//for _, item := range output.Items {
+		//	fetched[item["id"].(*types.AttributeValueMemberS).Value] = true
+		//}
+		//fmt.Printf("[DEBUG] %2d / %s (LIMIT %#v) / LastEvaluatedKey: %d - NextToken: %5v / Fetched: %2d - Total: %2d\n", idx, stmt.query, stmt.limit, len(output.LastEvaluatedKey), output.NextToken != nil, len(output.Items), len(fetched))
+		//// END FIXME
+
+		if firstOutput == nil {
+			firstOutput = output
+		} else {
+			firstOutput.ResultMetadata = output.ResultMetadata
+			firstOutput.LastEvaluatedKey = output.LastEvaluatedKey
+			firstOutput.NextToken = output.NextToken
+			firstOutput.ConsumedCapacity = output.ConsumedCapacity
+			firstOutput.Items = append(firstOutput.Items, output.Items...)
+		}
+		input.NextToken = output.NextToken
+
+		//merge result
+		if limitNumItems > 0 {
+			if len(firstOutput.Items) >= int(limitNumItems) {
+				firstOutput.Items = firstOutput.Items[:limitNumItems]
+				break
+			}
+			input.Limit = aws.Int32(limitNumItems - int32(len(firstOutput.Items)))
+		}
+
+		if output.NextToken == nil {
+			break
+		}
+	}
 	return func() *dynamodb.ExecuteStatementOutput {
-		return output
+		return firstOutput
 	}, err
 }
 

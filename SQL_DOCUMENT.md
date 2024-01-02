@@ -49,14 +49,16 @@ Sample result:
 > 
 >       dbrows, err := db.Query(`SELECT * FROM "session" WHERE app='frontend' LIMIT 10`)
 >
-> Note: the value for `LIMIT` must be a positive integer.
+> Note:
+> - The `LIMIT` clause is extension offered by `godynamodb` and is not part of [PartiQL syntax](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.select.html).
+> - The value for `LIMIT` must be a _positive integer_.
 
 > Since [v0.4.0](RELEASE-NOTES.md), `godynamodb` supports ConsistentRead for `SELECT` statement via clause `WITH ConsistentRead=true` or `WITH Consistent_Read=true`.
 > Example:
 >
 >       dbrows, err := db.Query(`SELECT * FROM "session" WHERE app='frontend' WITH ConsistentRead=true`)
 >
-> Note: the WITH clause must be placed at the end of the SELECT statement.
+> Note: the WITH clause must be placed _at the end_ of the SELECT statement.
 
 ## UPDATE
 
