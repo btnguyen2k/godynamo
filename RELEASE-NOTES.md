@@ -1,5 +1,11 @@
 # godynamo release notes
 
+## 2024-01-02 - v1.1.1
+
+### Fixed/Improvement
+
+- Fix: result returned from a SELECT can be paged if too big
+
 ## 2023-12-31 - v1.1.0
 
 ### Added/Refactoring
