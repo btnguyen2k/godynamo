@@ -24,9 +24,9 @@ var (
 
 func Test_OpenDatabase(t *testing.T) {
 	testName := "Test_OpenDatabase"
-	driver := "godynamo"
+	dbdriver := "godynamo"
 	dsn := "dummy"
-	db, err := sql.Open(driver, dsn)
+	db, err := sql.Open(dbdriver, dsn)
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
@@ -55,12 +55,12 @@ func TestConn_ValuesToNamedValues(t *testing.T) {
 /*----------------------------------------------------------------------*/
 
 func _openDb(t *testing.T, testName string) *sql.DB {
-	driver := "godynamo"
+	dbdriver := "godynamo"
 	url := strings.ReplaceAll(os.Getenv("AWS_DYNAMODB_URL"), `"`, "")
 	if url == "" {
 		t.Skipf("%s skipped", testName)
 	}
-	db, err := sql.Open(driver, url)
+	db, err := sql.Open(dbdriver, url)
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/sql.Open", err)
 	}
@@ -72,12 +72,12 @@ func _openDb(t *testing.T, testName string) *sql.DB {
 func TestDriver_Conn(t *testing.T) {
 	testName := "TestDriver_Conn"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	conn, err := db.Conn(context.Background())
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 }
 
 // func TestDriver_Transaction(t *testing.T) {
@@ -94,7 +94,7 @@ func TestDriver_Conn(t *testing.T) {
 func TestDriver_Open(t *testing.T) {
 	testName := "TestDriver_Open"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	if err := db.Ping(); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
@@ -103,7 +103,7 @@ func TestDriver_Open(t *testing.T) {
 func TestDriver_Close(t *testing.T) {
 	testName := "TestDriver_Close"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	if err := db.Ping(); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}

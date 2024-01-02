@@ -123,6 +123,17 @@ fmt.Println("RowsAffected:", rowsAffected2) // output "RowsAffected: 1"
 >
 > You can use [EXISTS function](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-functions.exists.html) for condition checking.
 
+## Caveats
+
+**Numerical values** are stored in DynamoDB as floating point numbers. Hence, numbers are always read back as `float64`. 
+See [DynamoDB document](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.NamingRulesDataTypes.html#HowItWorks.DataTypes) for details on DynamoDB's supported data types.
+
+**A single query can only return up to [1MB of data](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Query.Pagination.html)**.
+In the case of `SELECT` query, the driver automatically issues additional queries to fetch the remaining data if needed.
+However, returned rows may not be in the expected order specified by `ORDER BY` clause. 
+That means, rows returned from the query `SELECT * FROM table_name WHERE category='Laptop' ORDER BY id` may not be in
+the expected order if all matched rows do not fit in 1MB of data.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.

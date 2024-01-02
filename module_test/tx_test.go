@@ -9,10 +9,10 @@ import (
 func TestTx_Rollback(t *testing.T) {
 	testName := "TestTx_Rollback"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	_initTest(db)
 
-	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -43,10 +43,10 @@ func TestTx_Rollback(t *testing.T) {
 func TestTx_Commit_Insert(t *testing.T) {
 	testName := "TestTx_Commit_Insert"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	_initTest(db)
 
-	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -105,12 +105,12 @@ func TestTx_Commit_Insert(t *testing.T) {
 func TestTx_Commit_UpdateDelete(t *testing.T) {
 	testName := "TestTx_Commit_UpdateDelete"
 	db := _openDb(t, testName)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	_initTest(db)
 
-	db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
-	db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'id': ?, 'active': ?}`, tblTestTemp), "1", true)
-	db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'id': ?, 'grade': ?}`, tblTestTemp), "2", 2)
+	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'id': ?, 'active': ?}`, tblTestTemp), "1", true)
+	_, _ = db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'id': ?, 'grade': ?}`, tblTestTemp), "2", 2)
 
 	tx, err := db.Begin()
 	if err != nil {
