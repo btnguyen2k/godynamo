@@ -6,6 +6,22 @@ import (
 	"testing"
 )
 
+func TestTx_Empty(t *testing.T) {
+	testName := "TestTx_Empty"
+	db := _openDb(t, testName)
+	defer func() { _ = db.Close() }()
+	_initTest(db)
+
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/Begin", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/Commit", err)
+	}
+}
+
 func TestTx_Rollback(t *testing.T) {
 	testName := "TestTx_Rollback"
 	db := _openDb(t, testName)

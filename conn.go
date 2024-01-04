@@ -62,6 +62,10 @@ func (c *Conn) commit() error {
 		c.txMode = txNone
 		c.txStmtList = nil
 	}()
+	if len(c.txStmtList) == 0 {
+		//empty transaction should be successful
+		return nil
+	}
 	c.txMode = txCommitting
 	txStmts := make([]types.ParameterizedStatement, len(c.txStmtList))
 	for i, txStmt := range c.txStmtList {
