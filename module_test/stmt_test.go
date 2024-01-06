@@ -245,6 +245,7 @@ func _verifyGSIInfo(t *testing.T, testName string, row map[string]interface{}, g
 }
 
 func _fetchAllRows(dbRows *sql.Rows) ([]map[string]interface{}, error) {
+	defer func() { _ = dbRows.Close() }()
 	colTypes, err := dbRows.ColumnTypes()
 	if err != nil {
 		return nil, err
