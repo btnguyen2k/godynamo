@@ -1,5 +1,15 @@
 # godynamo release notes
 
+## 2024-01-06 - v1.2.0
+
+### Added/Refactoring
+
+- Refactor transaction support
+
+### Fixed/Improvement
+
+- Fix: empty transaction should be committed successfully
+
 ## 2024-01-02 - v1.1.1
 
 ### Fixed/Improvement

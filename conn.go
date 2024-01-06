@@ -258,7 +258,7 @@ func (c *Conn) Prepare(query string) (driver.Stmt, error) {
 
 // PrepareContext implements driver.ConnPrepareContext/PrepareContext.
 //
-// Note: since <<VERSION>>, this function returns ErrInTx if there is an outgoing transaction.
+// Note: since v1.2.0, this function returns ErrInTx if there is an outgoing transaction.
 //
 // @Available since v0.2.0
 func (c *Conn) PrepareContext(_ context.Context, query string) (driver.Stmt, error) {
