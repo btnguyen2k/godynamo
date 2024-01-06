@@ -5,6 +5,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -13,8 +14,11 @@ import (
 )
 
 var (
-	ErrInTx           = errors.New("statement is in the middle of a transaction, result is not available until committed")
-	ErrInvalidTxStage = errors.New("invalid transaction stage, cannot execute statement ")
+	ErrInTx           = errors.New("there is an ongoing transaction, new transaction/statement or fetching result is not allowed")
+	ErrInvalidTxStage = errors.New("invalid transaction stage")
+	ErrNoTx           = errors.New("no transaction is in progress")
+	ErrTxCommitting   = errors.New("transaction is being committed")
+	ErrTxRollingBack  = errors.New("transaction is being rolled back")
 )
 
 type txMode int
@@ -23,8 +27,10 @@ const (
 	txNone txMode = iota
 	txStarted
 	txCommitting
+	txRollingBack
 )
 
+// txStmt holds a statement to be executed in a transaction.
 type txStmt struct {
 	stmt   *Stmt
 	values []driver.NamedValue
@@ -37,6 +43,8 @@ type executeStatementOutputWrapper func() *dynamodb.ExecuteStatementOutput
 type Conn struct {
 	client     *dynamodb.Client // AWS DynamoDB client
 	timeout    time.Duration
+	lock       sync.Mutex
+	tx         *Tx
 	txMode     txMode
 	txStmtList []*txStmt
 }
@@ -58,11 +66,29 @@ func (c *Conn) ensureContext(ctx context.Context) context.Context {
 }
 
 func (c *Conn) commit() error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if c.tx == nil {
+		return ErrNoTx
+	}
+	if c.txMode == txRollingBack {
+		return ErrTxRollingBack
+	}
+	if c.txMode != txStarted && c.txMode != txCommitting {
+		return ErrInvalidTxStage
+	}
+	c.txMode = txCommitting
 	defer func() {
+		c.tx = nil
 		c.txMode = txNone
 		c.txStmtList = nil
 	}()
-	c.txMode = txCommitting
+
+	if len(c.txStmtList) == 0 {
+		//empty transaction should be successful
+		return nil
+	}
+
 	txStmts := make([]types.ParameterizedStatement, len(c.txStmtList))
 	for i, txStmt := range c.txStmtList {
 		params := make([]types.AttributeValue, len(txStmt.values))
@@ -95,7 +121,20 @@ func (c *Conn) commit() error {
 }
 
 func (c *Conn) rollback() error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if c.tx == nil {
+		return ErrNoTx
+	}
+	if c.txMode == txCommitting {
+		return ErrTxCommitting
+	}
+	if c.txMode != txStarted && c.txMode != txRollingBack {
+		return ErrInvalidTxStage
+	}
+	c.txMode = txRollingBack
 	defer func() {
+		c.tx = nil
 		c.txMode = txNone
 		c.txStmtList = nil
 	}()
@@ -104,7 +143,10 @@ func (c *Conn) rollback() error {
 
 // execute executes a PartiQL query and returns the result output.
 func (c *Conn) executeContext(ctx context.Context, stmt *Stmt, values []driver.NamedValue) (executeStatementOutputWrapper, error) {
+	//fmt.Printf("[DEBUG] executeContext: in-tx %5v - %s\n", c.tx != nil, stmt.query)
 	if c.txMode == txStarted {
+		// transaction has started and not yet committed or rolled back
+		// --> can add more statements to the transaction
 		txStmt := txStmt{stmt: stmt, values: values}
 		c.txStmtList = append(c.txStmtList, &txStmt)
 		return func() *dynamodb.ExecuteStatementOutput {
@@ -112,8 +154,13 @@ func (c *Conn) executeContext(ctx context.Context, stmt *Stmt, values []driver.N
 		}, ErrInTx
 	}
 	if c.txMode != txNone {
+		// transaction is in the middle of committing or rolling back
+		// --> can neither add more statements to the transaction nor execute any statement
 		return nil, ErrInvalidTxStage
 	}
+
+	/* not in transaction mode, execute the statement normally */
+
 	params := make([]types.AttributeValue, len(values))
 	var err error
 	for i, v := range values {
@@ -211,6 +258,8 @@ func (c *Conn) Prepare(query string) (driver.Stmt, error) {
 
 // PrepareContext implements driver.ConnPrepareContext/PrepareContext.
 //
+// Note: since v1.2.0, this function returns ErrInTx if there is an outgoing transaction.
+//
 // @Available since v0.2.0
 func (c *Conn) PrepareContext(_ context.Context, query string) (driver.Stmt, error) {
 	return parseQuery(c, query)
@@ -218,6 +267,10 @@ func (c *Conn) PrepareContext(_ context.Context, query string) (driver.Stmt, err
 
 // Close implements driver.Conn/Close.
 func (c *Conn) Close() error {
+	if c.tx != nil {
+		//rolling back any outgoing transaction
+		return c.tx.Rollback()
+	}
 	return nil
 }
 
@@ -226,13 +279,19 @@ func (c *Conn) Begin() (driver.Tx, error) {
 	return c.BeginTx(context.Background(), driver.TxOptions{})
 }
 
-// BeginTx implements driver.ConnBeginTx/BeginTx.
+// BeginTx implements driver.Conn/BeginTx.
 //
 // @Available since v0.2.0
 func (c *Conn) BeginTx(_ context.Context, _ driver.TxOptions) (driver.Tx, error) {
-	c.txMode = txStarted
-	c.txStmtList = make([]*txStmt, 0)
-	return &Tx{conn: c}, nil
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if c.tx == nil {
+		c.tx = &Tx{conn: c}
+		c.txMode = txStarted
+		c.txStmtList = make([]*txStmt, 0)
+		return c.tx, nil
+	}
+	return c.tx, ErrInTx
 }
 
 // CheckNamedValue implements driver.NamedValueChecker/CheckNamedValue.

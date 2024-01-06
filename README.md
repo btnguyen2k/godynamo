@@ -106,6 +106,7 @@ err = tx.Commit()
 if err != nil {
 	panic(err)
 }
+
 rowsAffected1, err1 := fmt.Println(result1.RowsAffected())
 if err1 != nil {
 	panic(err1)
@@ -122,6 +123,44 @@ fmt.Println("RowsAffected:", rowsAffected2) // output "RowsAffected: 1"
 > If a statement's condition check fails (e.g. deleting non-existing item), the whole transaction will also fail. This behaviour is different from executing statements in non-transactional mode where failed condition check results in `0` affected row without error.
 >
 > You can use [EXISTS function](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-functions.exists.html) for condition checking.
+
+Notes on transactions:
+
+- Results of `INSERT`/`UPDATE`/`DELETE` statements are not available until the transaction is committed. Which means, calling
+`RowsAffected()` before `Commit()` will return `0, ErrInTx`.
+- If the connection which has a non-commit/non-rollback transaction is used to execute another statement, the statement is 
+added to the transaction. If the transaction is being committed or rolled back, the execution of the statement will fail
+with error `ErrInTx`. For example:
+
+```go
+conn, _ := db.Conn(context.Background())
+tx, err := conn.BeginTx(context.Background(), nil)
+if err != nil {
+	panic(err)
+}
+result1, _ := tx.Exec(`INSERT INTO "tbltest" VALUE {'app': ?, 'user': ?, 'active': ?}`, "app0", "user1", true)
+
+// the statement is added to the existing transaction
+// also, result2.RowsAffected() is not available until the transaction is committed
+result2, _ := conn.ExecContext(context.Background(), `INSERT INTO "tbltest" VALUE {'app': ?, 'user': ?, 'duration': ?}`, "app0", "user2", 1.23)
+
+err = tx.Commit()
+if err != nil {
+	panic(err)
+}
+
+rowsAffected1, err1 := fmt.Println(result1.RowsAffected())
+if err1 != nil {
+	panic(err1)
+}
+fmt.Println("RowsAffected:", rowsAffected1) // output "RowsAffected: 1"
+
+rowsAffected2, err2 := fmt.Println(result2.RowsAffected())
+if err2 != nil {
+	panic(err2)
+}
+fmt.Println("RowsAffected:", rowsAffected2) // output "RowsAffected: 1"
+```
 
 ## Caveats
 
