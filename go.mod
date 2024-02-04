@@ -2,7 +2,7 @@ module github.com/btnguyen2k/godynamo
 
 go 1.18
 
-require github.com/aws/aws-sdk-go-v2/service/dynamodb v1.26.8
+require github.com/aws/aws-sdk-go-v2/service/dynamodb v1.27.1
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.24.1
