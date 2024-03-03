@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.16.14
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.12.14
 	github.com/aws/smithy-go v1.19.0
-	github.com/btnguyen2k/consu/g18 v0.0.2
+	github.com/btnguyen2k/consu/g18 v0.1.0
 	github.com/btnguyen2k/consu/reddo v0.1.8
 )
 
