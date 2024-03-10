@@ -5,7 +5,7 @@ go 1.18
 replace github.com/btnguyen2k/godynamo => ../
 
 require (
-	github.com/aws/aws-sdk-go-v2 v1.25.2
+	github.com/aws/aws-sdk-go-v2 v1.25.3
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.30.1
 	github.com/aws/smithy-go v1.20.1
 	github.com/btnguyen2k/consu/reddo v0.1.9
