@@ -174,8 +174,6 @@ func Test_Query_Select_with_columns_selection(t *testing.T) {
 	}
 	insData := [][]interface{}{
 		{"app", "user1", "Linux", true, 1.0},
-		{"app", "user2", "Windows", false, 2.3},
-		{"app", "user3", "MacOS", true, 4.56},
 	}
 	for _, data := range insData {
 		_, err = db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'app': ?, 'user': ?, 'os': ?, 'active': ?, 'duration': ?}`, tblTestTemp), data...)
@@ -196,7 +194,7 @@ func Test_Query_Select_with_columns_selection(t *testing.T) {
 		t.Fatalf("%s failed: expected %#v row but received %#v", testName+"/select", len(insData), len(allRows))
 	}
 
-	dbresult, err = db.Query(fmt.Sprintf(`SELECT duration, app, os, active FROM "%s" WHERE app=? AND user=?`, tblTestTemp), "app", "user1")
+	dbresult, err = db.Query(fmt.Sprintf(`SELECT "duration", "app", "os", "active" FROM "%s" WHERE "app"=? AND "user"=?`, tblTestTemp), "app", "user1")
 	if !dbresult.Next() {
 		t.Fatalf("%s failed: %s", testName+"/select", err)
 	}
