@@ -13,7 +13,6 @@ import (
 )
 
 var (
-	// rePlaceholder = regexp.MustCompile(`(?m)\?\s*[,})\]\s]`)
 	rePlaceholder  = regexp.MustCompile(`\?`)
 	reReturning    = regexp.MustCompile(`(?im)\s+RETURNING\s+((ALL\s+OLD)|(MODIFIED\s+OLD)|(ALL\s+NEW)|(MODIFIED\s+NEW))\s+\*\s*$`)
 	reLimit        = regexp.MustCompile(`(?im)\s+LIMIT\s+(\S+)\s*`)
@@ -37,20 +36,6 @@ func (s *StmtExecutable) parse() error {
 	matches := rePlaceholder.FindAllString(queryWithRemovedStringLiteral+" ", -1)
 	s.numInput = len(matches)
 
-	// // Parse WITH options
-	// withOptString := reSelectWithOpts.FindAllString(s.query, -1)
-	// for _, str := range withOptString {
-	// 	s.withOptString += " " + str
-	// }
-	//
-	// // Remove WITH options from query
-	// s.query = reSelectWithOpts.ReplaceAllString(s.query, "")
-
-	// // Parse WITH options
-	// err := s.parseWithOpts(s.withOptsStr)
-	// if err != nil {
-	// 	return err
-	// }
 	return nil
 }
 
@@ -167,6 +152,34 @@ func (s *StmtSelect) QueryContext(ctx context.Context, values []driver.NamedValu
 	return result, err
 }
 
+// extractSelectedColumnList returns a slice of selected column names from the query.
+// If the query contains "*" or no selected column, an empty slice is returned.
+func extractSelectedColumnList(query string) []string {
+	emptySelectedColumnList := make([]string, 0)
+
+	selectedListMatch := reSelectedList.FindStringSubmatch(query)
+	if len(selectedListMatch) == 0 {
+		return emptySelectedColumnList
+	}
+
+	selectedColumnList := make([]string, 0)
+	selectedListStr := selectedListMatch[1]
+	for _, v := range strings.Split(selectedListStr, ",") {
+		for {
+			t := strings.Trim(strings.Trim(strings.TrimSpace(v), `"`), `'`)
+			if t == v {
+				break
+			}
+			v = t
+		}
+		if v == "*" {
+			return emptySelectedColumnList
+		}
+		selectedColumnList = append(selectedColumnList, v)
+	}
+	return selectedColumnList
+}
+
 /*----------------------------------------------------------------------*/
 
 // StmtUpdate implements "UPDATE" statement.
@@ -281,25 +294,4 @@ func (s *StmtDelete) ExecContext(ctx context.Context, values []driver.NamedValue
 		err = nil
 	}
 	return &ResultNoResultSet{err: err, affectedRows: affectedRows}, err
-}
-
-// extractSelectedColumnList returns a slice of selected column names from the query.
-// If the query contains "*" or no selected column, an empty slice is returned.
-func extractSelectedColumnList(query string) []string {
-	selectedColumnList := make([]string, 0)
-	selectedListMatch := reSelectedList.FindStringSubmatch(query)
-	if len(selectedListMatch) < 1 {
-		return selectedColumnList
-	}
-	selectedListStr := selectedListMatch[1]
-	if strings.Contains(selectedListStr, "*") {
-		return selectedColumnList
-	}
-	for _, v := range strings.Split(selectedListStr, ",") {
-		v = strings.TrimSpace(v)
-		v = strings.Trim(v, `"`)
-		v = strings.Trim(v, `'`)
-		selectedColumnList = append(selectedColumnList, v)
-	}
-	return selectedColumnList
 }

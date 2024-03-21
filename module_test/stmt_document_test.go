@@ -204,7 +204,7 @@ func Test_Query_Select_with_columns_selection(t *testing.T) {
 		active   bool
 	)
 	expected := []interface{}{1.0, "app", "Linux", true}
-	dbresult.Scan(&duration, &app, &os, &active)
+	_ = dbresult.Scan(&duration, &app, &os, &active)
 	if !reflect.DeepEqual([]interface{}{duration, app, os, active}, expected) {
 		t.Fatalf("%s failed: expected %#v but received %#v", testName+"/select", expected, []interface{}{duration, app, os, active})
 	}
