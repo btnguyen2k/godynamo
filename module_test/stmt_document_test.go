@@ -162,6 +162,54 @@ func Test_Query_Select_withLimit(t *testing.T) {
 	}
 }
 
+func Test_Query_Select_with_columns_selection(t *testing.T) {
+	testName := "Test_Query_Select_with_columns_selection"
+	db := _openDb(t, testName)
+	defer func() { _ = db.Close() }()
+	_initTest(db)
+
+	_, err := db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=5 WITH wcu=5`, tblTestTemp))
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	insData := [][]interface{}{
+		{"app", "user1", "Linux", true, 1.0},
+	}
+	for _, data := range insData {
+		_, err = db.Exec(fmt.Sprintf(`INSERT INTO "%s" VALUE {'app': ?, 'user': ?, 'os': ?, 'active': ?, 'duration': ?}`, tblTestTemp), data...)
+		if err != nil {
+			t.Fatalf("%s failed: %s", testName+"/insert", err)
+		}
+	}
+
+	dbresult, err := db.Query(fmt.Sprintf(`SELECT * FROM "%s" WHERE app=?`, tblTestTemp), "app")
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/select", err)
+	}
+	allRows, err := _fetchAllRows(dbresult)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	if len(allRows) != len(insData) {
+		t.Fatalf("%s failed: expected %#v row but received %#v", testName+"/select", len(insData), len(allRows))
+	}
+
+	dbresult, err = db.Query(fmt.Sprintf(`SELECT "duration", "app", "os", "active" FROM "%s" WHERE "app"=? AND "user"=?`, tblTestTemp), "app", "user1")
+	if !dbresult.Next() {
+		t.Fatalf("%s failed: %s", testName+"/select", err)
+	}
+	var (
+		duration float64
+		app, os  string
+		active   bool
+	)
+	expected := []interface{}{1.0, "app", "Linux", true}
+	_ = dbresult.Scan(&duration, &app, &os, &active)
+	if !reflect.DeepEqual([]interface{}{duration, app, os, active}, expected) {
+		t.Fatalf("%s failed: expected %#v but received %#v", testName+"/select", expected, []interface{}{duration, app, os, active})
+	}
+}
+
 func Test_Exec_Delete(t *testing.T) {
 	testName := "Test_Exec_Delete"
 	db := _openDb(t, testName)

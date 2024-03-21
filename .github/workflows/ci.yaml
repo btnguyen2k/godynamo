@@ -47,7 +47,7 @@ jobs:
         with:
           go-version: 'stable'
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v4
         with:
           version: latest
           only-new-issues: true
@@ -97,7 +97,7 @@ jobs:
           go version
           go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage.txt ./
       - name: Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
@@ -126,7 +126,7 @@ jobs:
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg="${COVER_PKG}" -coverprofile coverage_local.txt ./ \
             && cd ..
       - name: Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:

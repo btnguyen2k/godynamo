@@ -306,6 +306,11 @@ func (r *ResultResultSet) init() *ResultResultSet {
 		}
 	}
 
+	if len(r.columnList) > 0 {
+		// #146: if column list was provided in the SELECT statement, keep the order as specified
+		return r
+	}
+
 	// save column names, sorted
 	r.columnList = make([]string, 0, len(colMap))
 	for col := range colMap {
