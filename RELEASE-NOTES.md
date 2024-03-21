@@ -1,5 +1,11 @@
 # godynamo release notes
 
+## 2024-03-21 - v1.2.1
+
+### Fixed/Improvement
+
+- Fix #146: Columns are not sorted in the order of selection.
+
 ## 2024-01-06 - v1.2.0
 
 ### Added/Refactoring
