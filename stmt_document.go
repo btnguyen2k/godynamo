@@ -14,9 +14,10 @@ import (
 
 var (
 	// rePlaceholder = regexp.MustCompile(`(?m)\?\s*[,})\]\s]`)
-	rePlaceholder = regexp.MustCompile(`\?`)
-	reReturning   = regexp.MustCompile(`(?im)\s+RETURNING\s+((ALL\s+OLD)|(MODIFIED\s+OLD)|(ALL\s+NEW)|(MODIFIED\s+NEW))\s+\*\s*$`)
-	reLimit       = regexp.MustCompile(`(?im)\s+LIMIT\s+(\S+)\s*`)
+	rePlaceholder  = regexp.MustCompile(`\?`)
+	reReturning    = regexp.MustCompile(`(?im)\s+RETURNING\s+((ALL\s+OLD)|(MODIFIED\s+OLD)|(ALL\s+NEW)|(MODIFIED\s+NEW))\s+\*\s*$`)
+	reLimit        = regexp.MustCompile(`(?im)\s+LIMIT\s+(\S+)\s*`)
+	reSelectedList = regexp.MustCompile(`(?im)SELECT\s+(.*)\s+FROM\s+`)
 )
 
 /*----------------------------------------------------------------------*/
@@ -160,7 +161,9 @@ func (s *StmtSelect) QueryContext(ctx context.Context, values []driver.NamedValu
 	// if err == ErrInTx {
 	// 	return &TxResultResultSet{wrap: ResultResultSet{err: err}, outputFn: outputFn}, nil
 	// }
-	result := (&ResultResultSet{stmtOutput: outputFn()}).init()
+	result := (&ResultResultSet{
+		stmtOutput: outputFn(),
+		columnList: extractSelectedColumnList(s.query)}).init()
 	return result, err
 }
 
@@ -278,4 +281,25 @@ func (s *StmtDelete) ExecContext(ctx context.Context, values []driver.NamedValue
 		err = nil
 	}
 	return &ResultNoResultSet{err: err, affectedRows: affectedRows}, err
+}
+
+// extractSelectedColumnList returns a slice of selected column names from the query.
+// If the query contains "*" or no selected column, an empty slice is returned.
+func extractSelectedColumnList(query string) []string {
+	selectedColumnList := make([]string, 0)
+	selectedListMatch := reSelectedList.FindStringSubmatch(query)
+	if len(selectedListMatch) < 1 {
+		return selectedColumnList
+	}
+	selectedListStr := selectedListMatch[1]
+	if strings.Contains(selectedListStr, "*") {
+		return selectedColumnList
+	}
+	for _, v := range strings.Split(selectedListStr, ",") {
+		v = strings.TrimSpace(v)
+		v = strings.Trim(v, `"`)
+		v = strings.Trim(v, `'`)
+		selectedColumnList = append(selectedColumnList, v)
+	}
+	return selectedColumnList
 }

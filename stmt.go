@@ -305,7 +305,9 @@ func (r *ResultResultSet) init() *ResultResultSet {
 			}
 		}
 	}
-
+	if len(r.columnList) > 0 {
+		return r
+	}
 	// save column names, sorted
 	r.columnList = make([]string, 0, len(colMap))
 	for col := range colMap {
