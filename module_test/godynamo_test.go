@@ -46,6 +46,7 @@ func Test_OpenDatabase_With_AWSConfig(t *testing.T) {
 		Credentials: credentials.NewStaticCredentialsProvider(
 			"abcdefg123456789", "abcdefg123456789", ""),
 	})
+	defer godynamo.DeregisterAWSConfig()
 	db, err := sql.Open(dbdriver, dsn)
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
@@ -53,11 +54,9 @@ func Test_OpenDatabase_With_AWSConfig(t *testing.T) {
 	if db == nil {
 		t.Fatalf("%s failed: nil", testName)
 	}
-	godynamo.DeregisterAWSConfig()
 
 	// with empty aws.Config
 	godynamo.RegisterAWSConfig(aws.Config{})
-	defer godynamo.DeregisterAWSConfig()
 	dbWithEmptyAWSConfig, err := sql.Open(dbdriver, dsn)
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
@@ -145,7 +144,7 @@ func TestDriver_Close(t *testing.T) {
 }
 
 func TestDriver_Open_With_AWSConfig(t *testing.T) {
-	testName := "TestDriver_Open"
+	testName := "TestDriver_Open_With_AWSConfig"
 	godynamo.RegisterAWSConfig(aws.Config{
 		Region: "us-west-2",
 		Credentials: credentials.NewStaticCredentialsProvider(
@@ -155,6 +154,14 @@ func TestDriver_Open_With_AWSConfig(t *testing.T) {
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
 	if err := db.Ping(); err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+
+	// with empty aws.Config
+	godynamo.RegisterAWSConfig(aws.Config{})
+	dbWithEmptyAWSConfig := _openDb(t, testName)
+	defer func() { _ = dbWithEmptyAWSConfig.Close() }()
+	if err := dbWithEmptyAWSConfig.Ping(); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
 }
