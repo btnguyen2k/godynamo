@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/btnguyen2k/consu/reddo"
 	"github.com/btnguyen2k/godynamo"
 	"os"
@@ -26,6 +27,21 @@ func Test_OpenDatabase(t *testing.T) {
 	testName := "Test_OpenDatabase"
 	dbdriver := "godynamo"
 	dsn := "dummy"
+	db, err := sql.Open(dbdriver, dsn)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	if db == nil {
+		t.Fatalf("%s failed: nil", testName)
+	}
+}
+
+func Test_OpenDatabase_With_AWSConfig(t *testing.T) {
+	testName := "Test_OpenDatabase_With_AWSConfig"
+	dbdriver := "godynamo"
+	dsn := "dummy"
+	godynamo.RegisterAWSConfig(aws.Config{})
+	defer godynamo.DeregisterAWSConfig()
 	db, err := sql.Open(dbdriver, dsn)
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
