@@ -46,12 +46,23 @@ func Test_OpenDatabase_With_AWSConfig(t *testing.T) {
 		Credentials: credentials.NewStaticCredentialsProvider(
 			"abcdefg123456789", "abcdefg123456789", ""),
 	})
-	defer godynamo.DeregisterAWSConfig()
 	db, err := sql.Open(dbdriver, dsn)
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
 	if db == nil {
+		t.Fatalf("%s failed: nil", testName)
+	}
+	godynamo.DeregisterAWSConfig()
+
+	// with empty aws.Config
+	godynamo.RegisterAWSConfig(aws.Config{})
+	defer godynamo.DeregisterAWSConfig()
+	dbWithEmptyAWSConfig, err := sql.Open(dbdriver, dsn)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	if dbWithEmptyAWSConfig == nil {
 		t.Fatalf("%s failed: nil", testName)
 	}
 }
