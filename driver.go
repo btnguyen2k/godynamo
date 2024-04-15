@@ -94,7 +94,7 @@ func (d *Driver) Open(connStr string) (driver.Conn, error) {
 		}
 	}
 	awsConfigLock.RLock()
-	defer awsConfigLock.Unlock()
+	defer awsConfigLock.RUnlock()
 	conf := awsConfig
 	if conf != nil {
 		client := dynamodb.NewFromConfig(*conf, mergeDynamoDBOptions(opts))
