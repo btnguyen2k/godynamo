@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/btnguyen2k/consu/reddo"
 	"github.com/btnguyen2k/godynamo"
 	"os"
@@ -40,7 +41,10 @@ func Test_OpenDatabase_With_AWSConfig(t *testing.T) {
 	testName := "Test_OpenDatabase_With_AWSConfig"
 	dbdriver := "godynamo"
 	dsn := "dummy"
-	godynamo.RegisterAWSConfig(aws.Config{})
+	godynamo.RegisterAWSConfig(aws.Config{
+		Region:      "us-west-2",
+		Credentials: credentials.NewStaticCredentialsProvider("abcdefg123456789", "abcdefg123456789", ""),
+	})
 	defer godynamo.DeregisterAWSConfig()
 	db, err := sql.Open(dbdriver, dsn)
 	if err != nil {
