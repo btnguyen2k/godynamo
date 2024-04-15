@@ -42,8 +42,9 @@ func Test_OpenDatabase_With_AWSConfig(t *testing.T) {
 	dbdriver := "godynamo"
 	dsn := "dummy"
 	godynamo.RegisterAWSConfig(aws.Config{
-		Region:      "us-west-2",
-		Credentials: credentials.NewStaticCredentialsProvider("abcdefg123456789", "abcdefg123456789", ""),
+		Region: "us-west-2",
+		Credentials: credentials.NewStaticCredentialsProvider(
+			"abcdefg123456789", "abcdefg123456789", ""),
 	})
 	defer godynamo.DeregisterAWSConfig()
 	db, err := sql.Open(dbdriver, dsn)
@@ -128,6 +129,21 @@ func TestDriver_Close(t *testing.T) {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
 	if err := db.Close(); err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+}
+
+func TestDriver_Open_With_AWSConfig(t *testing.T) {
+	testName := "TestDriver_Open"
+	godynamo.RegisterAWSConfig(aws.Config{
+		Region: "us-west-2",
+		Credentials: credentials.NewStaticCredentialsProvider(
+			"abcdefg123456789", "abcdefg123456789", ""),
+	})
+	defer godynamo.DeregisterAWSConfig()
+	db := _openDb(t, testName)
+	defer func() { _ = db.Close() }()
+	if err := db.Ping(); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
 }
