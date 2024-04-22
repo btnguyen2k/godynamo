@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/btnguyen2k/consu/reddo"
 	"github.com/btnguyen2k/godynamo"
 	"os"
@@ -31,6 +33,35 @@ func Test_OpenDatabase(t *testing.T) {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
 	if db == nil {
+		t.Fatalf("%s failed: nil", testName)
+	}
+}
+
+func Test_OpenDatabase_With_AWSConfig(t *testing.T) {
+	testName := "Test_OpenDatabase_With_AWSConfig"
+	dbdriver := "godynamo"
+	dsn := "dummy"
+	godynamo.RegisterAWSConfig(aws.Config{
+		Region: "us-west-2",
+		Credentials: credentials.NewStaticCredentialsProvider(
+			"abcdefg123456789", "abcdefg123456789", ""),
+	})
+	defer godynamo.DeregisterAWSConfig()
+	db, err := sql.Open(dbdriver, dsn)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	if db == nil {
+		t.Fatalf("%s failed: nil", testName)
+	}
+
+	// with empty aws.Config
+	godynamo.RegisterAWSConfig(aws.Config{})
+	dbWithEmptyAWSConfig, err := sql.Open(dbdriver, dsn)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	if dbWithEmptyAWSConfig == nil {
 		t.Fatalf("%s failed: nil", testName)
 	}
 }
@@ -108,6 +139,29 @@ func TestDriver_Close(t *testing.T) {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
 	if err := db.Close(); err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+}
+
+func TestDriver_Open_With_AWSConfig(t *testing.T) {
+	testName := "TestDriver_Open_With_AWSConfig"
+	godynamo.RegisterAWSConfig(aws.Config{
+		Region: "us-west-2",
+		Credentials: credentials.NewStaticCredentialsProvider(
+			"abcdefg123456789", "abcdefg123456789", ""),
+	})
+	defer godynamo.DeregisterAWSConfig()
+	db := _openDb(t, testName)
+	defer func() { _ = db.Close() }()
+	if err := db.Ping(); err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+
+	// with empty aws.Config
+	godynamo.RegisterAWSConfig(aws.Config{})
+	dbWithEmptyAWSConfig := _openDb(t, testName)
+	defer func() { _ = dbWithEmptyAWSConfig.Close() }()
+	if err := dbWithEmptyAWSConfig.Ping(); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
 }

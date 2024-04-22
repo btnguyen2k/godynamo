@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws/transport/http"
@@ -92,6 +93,49 @@ func (d *Driver) Open(connStr string) (driver.Conn, error) {
 			opts.EndpointOptions.DisableHTTPS = true
 		}
 	}
+	awsConfigLock.RLock()
+	defer awsConfigLock.RUnlock()
+	conf := awsConfig
+	if conf != nil {
+		client := dynamodb.NewFromConfig(*conf, mergeDynamoDBOptions(opts))
+		return &Conn{client: client, timeout: time.Duration(timeoutMs) * time.Millisecond}, nil
+	}
 	client := dynamodb.New(opts)
 	return &Conn{client: client, timeout: time.Duration(timeoutMs) * time.Millisecond}, nil
+}
+
+// awsConfig is the AWS configuration to be used by the dynamodb client.
+var (
+	awsConfigLock = &sync.RWMutex{}
+	awsConfig     *aws.Config
+)
+
+// RegisterAWSConfig registers aws.Config to be used by the dynamodb client.
+//
+// The following configurations do not apply even if they are set in aws.Config.
+//   - HTTPClient
+func RegisterAWSConfig(conf aws.Config) {
+	awsConfigLock.Lock()
+	defer awsConfigLock.Unlock()
+	awsConfig = &conf
+}
+
+// DeregisterAWSConfig removes the registered aws.Config.
+func DeregisterAWSConfig() {
+	awsConfigLock.Lock()
+	defer awsConfigLock.Unlock()
+	awsConfig = nil
+}
+
+// mergeDynamoDBOptions merges the provided dynamodb.Options into the default dynamodb.Options.
+func mergeDynamoDBOptions(opts dynamodb.Options) func(options *dynamodb.Options) {
+	return func(defaultOpts *dynamodb.Options) {
+		if defaultOpts.Credentials == nil {
+			defaultOpts.Credentials = opts.Credentials
+		}
+		if defaultOpts.Region == "" {
+			defaultOpts.Region = opts.Region
+		}
+		defaultOpts.HTTPClient = opts.HTTPClient
+	}
 }
