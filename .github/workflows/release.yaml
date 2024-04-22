@@ -127,7 +127,9 @@ jobs:
           if [ "${RESULT}" == "SUCCESS" ]; then
             VERSION='${{ needs.ReleaseDryRun.outputs.VERSION }}'
             echo "🕘 Cleaning up file .semrelease/this_release..."
-            echo > .semrelease/this_release
+            echo "# This file has been cleaned up post-releasing version ${VERSION}." > .semrelease/this_release
+            echo "# Generate its content quickly using the following command:" >> .semrelease/this_release
+            echo "#   git log origin..HEAD | grep \"^\s\" > .semrelease/this_release" >> .semrelease/this_release
             git config --global user.email "<>"
             git config --global user.name "CI Build"
             git commit -am "Cleanup file .semrelease/this_release post-releasing version ${VERSION}"
