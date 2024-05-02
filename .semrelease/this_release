@@ -1,1 +1,3 @@
-New feature: sql.Open with aws.Config
+# This file has been cleaned up post-releasing version 1.3.0.
+# Generate its content quickly using the following command:
+#   git log origin..HEAD | grep "^\s" > .semrelease/this_release
