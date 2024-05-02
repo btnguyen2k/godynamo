@@ -116,7 +116,7 @@ var (
 // The following configurations do not apply even if they are set in aws.Config.
 //   - HTTPClient
 //
-// @Available since <<VERSION>>
+// @Available since v1.3.0
 func RegisterAWSConfig(conf aws.Config) {
 	awsConfigLock.Lock()
 	defer awsConfigLock.Unlock()
@@ -125,7 +125,7 @@ func RegisterAWSConfig(conf aws.Config) {
 
 // DeregisterAWSConfig removes the registered aws.Config.
 //
-// @Available since <<VERSION>>
+// @Available since v1.3.0
 func DeregisterAWSConfig() {
 	awsConfigLock.Lock()
 	defer awsConfigLock.Unlock()

@@ -1,5 +1,11 @@
 # godynamo release notes
 
+## 2024-05-02 - v1.3.0
+
+### Added/Refactoring
+
+- New feature: sql.Open with aws.Config
+
 ## 2024-03-21 - v1.2.1
 
 ### Fixed/Improvement

@@ -65,7 +65,7 @@ Region=<aws-region>
 
 ## Using `aws.Config`:
 
-Since <<VERSION>>, `godynamo` supports using `aws.Config` to create the connection to DynamoDB:
+Since v1.3.0, `godynamo` supports using `aws.Config` to create the connection to DynamoDB:
 
 ```go
 package main
