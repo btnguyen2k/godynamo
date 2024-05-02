@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/btnguyen2k/consu/reddo"
 	"github.com/btnguyen2k/godynamo"
 	"os"
@@ -32,6 +35,66 @@ func Test_OpenDatabase(t *testing.T) {
 	}
 	if db == nil {
 		t.Fatalf("%s failed: nil", testName)
+	}
+}
+
+func Test_OpenDatabase_With_AWSConfig_Endpoint(t *testing.T) {
+	testName := "Test_OpenDatabase_With_AWSConfig_Endpoint"
+	dbdriver := "godynamo"
+
+	dsnEndpoint := "http://1.2.3.4:1234/"
+	dsn := fmt.Sprintf("Region=dummy-region;AkId=dummy-key-id;SecretKey=dummy-key;Endpoint=%s", dsnEndpoint)
+
+	{
+		// without AWSConfig
+		db, err := sql.Open(dbdriver, dsn)
+		if err != nil {
+			t.Fatalf("%s failed: %s", testName+"/open", err)
+		}
+		_, err = db.QueryContext(context.Background(), "LIST TABLES")
+		if err == nil {
+			t.Fatalf("%s failed: expected error", testName+"/query")
+		}
+		if strings.Index(err.Error(), fmt.Sprintf(`"%s"`, dsnEndpoint)) < 0 {
+			t.Fatalf("%s failed: expected error message to contain [%s], but received [%s]", testName, dsnEndpoint, err)
+		}
+	}
+
+	defer godynamo.DeregisterAWSConfig()
+
+	// with AWSConfig
+	cfgEndpoint := "http://5.6.7.8:5678/"
+	godynamo.RegisterAWSConfig(aws.Config{
+		BaseEndpoint: aws.String(cfgEndpoint),
+	})
+	{
+		db, err := sql.Open(dbdriver, dsn)
+		if err != nil {
+			t.Fatalf("%s failed: %s", testName+"/open", err)
+		}
+		_, err = db.QueryContext(context.Background(), "LIST TABLES")
+		if err == nil {
+			t.Fatalf("%s failed: expected error", testName+"/query")
+		}
+		if strings.Index(err.Error(), fmt.Sprintf(`"%s"`, cfgEndpoint)) < 0 {
+			t.Fatalf("%s failed: expected error message to contain [%s], but received [%s]", testName, cfgEndpoint, err)
+		}
+	}
+
+	// with empty AWSConfig
+	godynamo.RegisterAWSConfig(aws.Config{})
+	{
+		db, err := sql.Open(dbdriver, dsn)
+		if err != nil {
+			t.Fatalf("%s failed: %s", testName+"/open", err)
+		}
+		_, err = db.QueryContext(context.Background(), "LIST TABLES")
+		if err == nil {
+			t.Fatalf("%s failed: expected error", testName+"/query")
+		}
+		if strings.Index(err.Error(), fmt.Sprintf(`"%s"`, dsnEndpoint)) < 0 {
+			t.Fatalf("%s failed: expected error message to contain [%s], but received [%s]", testName, dsnEndpoint, err)
+		}
 	}
 }
 
@@ -108,6 +171,29 @@ func TestDriver_Close(t *testing.T) {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
 	if err := db.Close(); err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+}
+
+func TestDriver_Open_With_AWSConfig(t *testing.T) {
+	testName := "TestDriver_Open_With_AWSConfig"
+	godynamo.RegisterAWSConfig(aws.Config{
+		Region: "us-west-2",
+		Credentials: credentials.NewStaticCredentialsProvider(
+			"abcdefg123456789", "abcdefg123456789", ""),
+	})
+	defer godynamo.DeregisterAWSConfig()
+	db := _openDb(t, testName)
+	defer func() { _ = db.Close() }()
+	if err := db.Ping(); err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+
+	// with empty aws.Config
+	godynamo.RegisterAWSConfig(aws.Config{})
+	dbWithEmptyAWSConfig := _openDb(t, testName)
+	defer func() { _ = dbWithEmptyAWSConfig.Close() }()
+	if err := dbWithEmptyAWSConfig.Ping(); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
 }
