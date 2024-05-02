@@ -95,7 +95,7 @@ jobs:
       - name: Run tests
         run: |
           go version
-          go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage.txt ./
+          go mod tidy && go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage.txt ./
       - name: Codecov
         uses: codecov/codecov-action@v4
         env:
@@ -123,6 +123,7 @@ jobs:
         run: |
           go version
           cd module_test \
+            && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg="${COVER_PKG}" -coverprofile coverage_local.txt ./ \
             && cd ..
       - name: Codecov
