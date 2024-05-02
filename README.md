@@ -63,6 +63,42 @@ Region=<aws-region>
 - `Endpoint`: (optional) AWS DynamoDB endpoint, for example `http://localhost:8000`; useful when AWS DynamoDB is running on local machine.
 - `TimeoutMs`: (optional) timeout in milliseconds. If not specified, default value is `10000`.
 
+## Using `aws.Config`:
+
+Since <<VERSION>>, `godynamo` supports using `aws.Config` to create the connection to DynamoDB:
+
+```go
+package main
+
+import (
+	"database/sql"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/btnguyen2k/godynamo"
+)
+
+func main() {
+	driver := "godynamo"
+	awscfg := aws.Config{
+        Region: "<aws-region>",
+        Credentials: aws.StaticCredentialsProvider{
+            Value: aws.Credentials{
+                AccessKeyID:     "<access-key-id>",
+                SecretAccessKey: "<secret-key>",
+			},
+		},
+    }
+	godynamo.RegisterAWSConfig(awscfg)
+	
+	db, err := sql.Open(driver, "dummy")
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+	
+	// db instance is ready to use
+}
+```
+
 ## Supported statements:
 
 - [Table](SQL_TABLE.md):
