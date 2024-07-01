@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -60,6 +61,49 @@ func Test_Exec_Insert(t *testing.T) {
 				t.Fatalf("%s failed: expected %#v affected-rows but received %#v", testName+"/"+testCase.name, testCase.affectedRows, affectedRows)
 			}
 		})
+	}
+}
+
+func Test_Exec_Insert_With_Valuer(t *testing.T) {
+	testName := "Test_Exec_Insert_With_Valuer"
+	db := _openDb(t, testName)
+	defer func() { _ = db.Close() }()
+	_initTest(db)
+
+	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
+
+	createdTime := time.Date(2024, 1, 2, 15, 4, 5, 0, time.UTC)
+
+	sql := fmt.Sprintf(`INSERT INTO "%s" VALUE {'id': '1', 'created_at': ?}`, tblTestTemp)
+	execResult, err := db.Exec(sql, JSTRFC3339(createdTime))
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/exec", err)
+	}
+	_, err = execResult.LastInsertId()
+	if err == nil || strings.Index(err.Error(), "not supported") < 0 {
+		t.Fatalf("%s failed: expected 'not support' error, but received %s", testName+"/last_insert_id", err)
+	}
+	affectedRows, err := execResult.RowsAffected()
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/rows_affected", err)
+	}
+	if affectedRows != 1 {
+		t.Fatalf("%s failed: expected %#v affected-rows but received %#v", testName, 1, affectedRows)
+	}
+
+	dbRow, err := db.Query(
+		fmt.Sprintf(`SELECT "created_at" FROM "%s" WHERE "id"=?`, tblTestTemp), "1")
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/select", err)
+	}
+
+	expected := "2024-01-03T00:04:05+09:00"
+	var actual string
+	if dbRow.Next() {
+		dbRow.Scan(&actual)
+	}
+	if actual != expected {
+		t.Fatalf("%s failed: expected-creared_at %#v but actual-creared_at %#v", testName, expected, actual)
 	}
 }
 
@@ -374,6 +418,54 @@ func Test_Exec_Update(t *testing.T) {
 	}
 	if rowsAffected2 != 0 {
 		t.Fatalf("%s failed: expected 0 row affected but received %#v", testName+"/rows_affected", rowsAffected2)
+	}
+}
+
+func Test_Exec_Update_With_Valuer(t *testing.T) {
+	testName := "Test_Exec_Update_With_Valuer"
+	db := _openDb(t, testName)
+	defer func() { _ = db.Close() }()
+	_initTest(db)
+
+	// setup table
+	_, _ = db.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp))
+	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=5 WITH wcu=5`, tblTestTemp))
+	_, err := db.Exec(
+		fmt.Sprintf(`INSERT INTO "%s" VALUE {'app': ?, 'user': ?, 'platform': ?, 'location': ?, 'created_at': ?, 'updated_at': ?}`, tblTestTemp),
+		"app0", "user0", "Linux", "AU", "2006-01-03T00:04:05+09:00", "2006-01-03T00:04:05+09:00")
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/insert", err)
+	}
+
+	updatedTime := time.Date(2024, 1, 2, 15, 4, 5, 0, time.UTC)
+
+	sql := fmt.Sprintf(`UPDATE "%s" SET updated_at=? WHERE "app"=? AND "user"=?`, tblTestTemp)
+	result, err := db.Exec(sql, JSTRFC3339(updatedTime), "app0", "user0")
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/update", err)
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/rows_affected", err)
+	}
+	if rowsAffected != 1 {
+		t.Fatalf("%s failed: expected 1 row affected but received %#v", testName+"/rows_affected", rowsAffected)
+	}
+
+	dbRow, err := db.Query(
+		fmt.Sprintf(`SELECT "updated_at" FROM "%s" WHERE "app"=? AND "user"=?`, tblTestTemp),
+		"app0", "user0")
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/select", err)
+	}
+
+	expected := "2024-01-03T00:04:05+09:00"
+	var actual string
+	if dbRow.Next() {
+		dbRow.Scan(&actual)
+	}
+	if actual != expected {
+		t.Fatalf("%s failed: expected-updated_at %#v but actual-updated_at %#v", testName, expected, actual)
 	}
 }
 

@@ -82,6 +82,12 @@ func ToAttributeValueUnsafe(value interface{}) types.AttributeValue {
 // ToAttributeValue marshals a Go value to AWS AttributeValue.
 func ToAttributeValue(value interface{}) (types.AttributeValue, error) {
 	switch v := value.(type) {
+	case driver.Valuer:
+		dv, err := v.Value()
+		if err != nil {
+			return &types.AttributeValueMemberNULL{Value: true}, err
+		}
+		return ToAttributeValue(dv)
 	case types.AttributeValueMemberB:
 		return &v, nil
 	case types.AttributeValueMemberBOOL:
