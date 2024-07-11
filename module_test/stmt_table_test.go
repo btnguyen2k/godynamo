@@ -1,11 +1,14 @@
 package godynamo_test
 
 import (
+	"context"
 	"fmt"
+	"github.com/btnguyen2k/godynamo"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func Test_Query_CreateTable(t *testing.T) {
@@ -22,8 +25,8 @@ func Test_Query_CreateTable(t *testing.T) {
 func Test_Exec_CreateTable_Query_DescribeTable(t *testing.T) {
 	testName := "Test_Exec_CreateTable_Query_DescribeTable"
 	db := _openDb(t, testName)
-	defer func() { _ = db.Close() }()
-	_initTest(db)
+	defer func() { _cleanupTables(db); _ = db.Close() }()
+	_cleanupTables(db)
 
 	testData := []struct {
 		name         string
@@ -31,16 +34,16 @@ func Test_Exec_CreateTable_Query_DescribeTable(t *testing.T) {
 		tableInfo    *tableInfo
 		affectedRows int64
 	}{
-		{name: "basic", sql: fmt.Sprintf(`CREATE TABLE %s WITH PK=id:string`, tblTestTemp+"1"), affectedRows: 1,
-			tableInfo: &tableInfo{tableName: tblTestTemp + "1", billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "S"}},
-		{name: "if_not_exists", sql: fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s WITH PK=id:NUMBER`, tblTestTemp+"1"), affectedRows: 0,
-			tableInfo: &tableInfo{tableName: tblTestTemp + "1", billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "S"}},
-		{name: "with_sk", sql: fmt.Sprintf(`CREATE TABLE %s WITH PK=id:binary WITH sk=grade:number, WITH class=standard`, tblTestTemp+"2"), affectedRows: 1,
-			tableInfo: &tableInfo{tableName: tblTestTemp + "2", billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "B", skAttr: "grade", skType: "N"}},
-		{name: "with_rcu_wcu", sql: fmt.Sprintf(`CREATE TABLE %s WITH PK=id:number WITH rcu=1 WITH wcu=2 WITH class=standard_ia`, tblTestTemp+"3"), affectedRows: 1,
-			tableInfo: &tableInfo{tableName: tblTestTemp + "3", billingMode: "", wcu: 2, rcu: 1, pkAttr: "id", pkType: "N"}},
-		{name: "with_lsi", sql: fmt.Sprintf(`CREATE TABLE %s WITH PK=id:binary WITH SK=username:string WITH LSI=index1:grade:number, WITH LSI=index2:dob:string:*, WITH LSI=index3:yob:binary:a,b,c`, tblTestTemp+"4"), affectedRows: 1,
-			tableInfo: &tableInfo{tableName: tblTestTemp + "4", billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "B", skAttr: "username", skType: "S",
+		{name: "basic", sql: fmt.Sprintf(`CREATE TABLE %s%d WITH PK=id:string`, tblTestTemp, 1), affectedRows: 1,
+			tableInfo: &tableInfo{tableName: fmt.Sprintf(`%s%d`, tblTestTemp, 1), billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "S"}},
+		{name: "if_not_exists", sql: fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s%d WITH PK=id:NUMBER`, tblTestTemp, 1), affectedRows: 0,
+			tableInfo: &tableInfo{tableName: fmt.Sprintf(`%s%d`, tblTestTemp, 1), billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "S"}},
+		{name: "with_sk", sql: fmt.Sprintf(`CREATE TABLE %s%d WITH PK=id:binary WITH sk=grade:number, WITH class=standard`, tblTestTemp, 2), affectedRows: 1,
+			tableInfo: &tableInfo{tableName: fmt.Sprintf(`%s%d`, tblTestTemp, 2), billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "B", skAttr: "grade", skType: "N"}},
+		{name: "with_rcu_wcu", sql: fmt.Sprintf(`CREATE TABLE %s%d WITH PK=id:number WITH rcu=1 WITH wcu=2 WITH class=standard_ia`, tblTestTemp, 3), affectedRows: 1,
+			tableInfo: &tableInfo{tableName: fmt.Sprintf(`%s%d`, tblTestTemp, 3), billingMode: "", wcu: 2, rcu: 1, pkAttr: "id", pkType: "N"}},
+		{name: "with_lsi", sql: fmt.Sprintf(`CREATE TABLE %s%d WITH PK=id:binary WITH SK=username:string WITH LSI=index1:grade:number, WITH LSI=index2:dob:string:*, WITH LSI=index3:yob:binary:a,b,c`, tblTestTemp, 4), affectedRows: 1,
+			tableInfo: &tableInfo{tableName: fmt.Sprintf(`%s%d`, tblTestTemp, 4), billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "B", skAttr: "username", skType: "S",
 				lsi: map[string]lsiInfo{
 					"index1": {projType: "KEYS_ONLY", lsiDef: lsiDef{indexName: "index1", attrName: "grade", attrType: "N"}},
 					"index2": {projType: "ALL", lsiDef: lsiDef{indexName: "index2", attrName: "dob", attrType: "S"}},
@@ -66,6 +69,14 @@ func Test_Exec_CreateTable_Query_DescribeTable(t *testing.T) {
 			if testCase.tableInfo == nil {
 				return
 			}
+
+			ctx, cancelF := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancelF()
+			err = godynamo.WaitForTableStatus(ctx, db, testCase.tableInfo.tableName, []string{"ACTIVE"}, 500*time.Millisecond)
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/WaitForTableStatus", err)
+			}
+
 			dbresult, err := db.Query(fmt.Sprintf(`DESCRIBE TABLE %s`, testCase.tableInfo.tableName))
 			if err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/describe_table", err)
@@ -93,12 +104,22 @@ func Test_Exec_ListTables(t *testing.T) {
 func Test_Query_ListTables(t *testing.T) {
 	testName := "Test_Query_ListTables"
 	db := _openDb(t, testName)
-	_initTest(db)
-	defer func() { _ = db.Close() }()
+	defer func() { _cleanupTables(db); _ = db.Close() }()
+	_cleanupTables(db)
 
 	tableList := []string{tblTestTemp + "2", tblTestTemp + "1", tblTestTemp + "3", tblTestTemp + "0"}
 	for _, tbl := range tableList {
-		_, _ = db.Exec(fmt.Sprintf("CREATE TABLE %s WITH PK=id:string", tbl))
+		_, err := db.Exec(fmt.Sprintf("CREATE TABLE %s WITH PK=id:string", tbl))
+		if err != nil {
+			t.Fatalf("%s failed: %s", testName+"/create_table", err)
+		}
+		timeout, waitTime := 10*time.Second, 500*time.Millisecond
+		ctx, ctxCancel := context.WithTimeout(context.Background(), timeout)
+		err = godynamo.WaitForTableStatus(ctx, db, tbl, []string{"ACTIVE"}, waitTime)
+		ctxCancel()
+		if err != nil {
+			t.Fatalf("%s failed: %s", testName+"/WaitForTableStatus", err)
+		}
 	}
 
 	dbresult, err := db.Query(`LIST TABLES`)
@@ -109,11 +130,11 @@ func Test_Query_ListTables(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/fetch_rows", err)
 	}
-	if len(rows) != 4 {
-		fmt.Printf("[DEBUG] %#v\n", rows)
-		t.Fatalf("%s failed: expected 4 rows but received %d", testName+"/fetch_rows", len(rows))
+	if len(rows) != len(tableList) {
+		t.Fatalf("%s failed: expected %d rows but received %d", testName+"/fetch_rows", len(tableList), len(rows))
 	}
-	for i := 0; i < 4; i++ {
+	for i := 0; i < len(tableList); i++ {
+		//note: returned table list is sorted by table name
 		tblname := rows[i]["$1"].(string)
 		if tblname != tblTestTemp+strconv.Itoa(i) {
 			t.Fatalf("%s failed: expected row #%d to be %#v but received %#v", testName+"/fetch_rows", i, tblTestTemp+strconv.Itoa(i), tblname)
@@ -135,19 +156,31 @@ func Test_Query_AlterTable(t *testing.T) {
 func Test_Exec_AlterTable(t *testing.T) {
 	testName := "Test_Exec_AlterTable"
 	db := _openDb(t, testName)
-	_initTest(db)
-	defer func() { _ = db.Close() }()
+	tblName := tblTestTemp + fmt.Sprintf("%x", time.Now().UnixNano())
+	defer func() { _, _ = db.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblName)); _ = db.Close() }()
 
-	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=id:string`, tblTestTemp))
+	timeout, waitTime := 10*time.Second, 500*time.Millisecond
+	{
+		_, err := db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=id:string`, tblName))
+		if err != nil {
+			t.Fatalf("%s failed: %s", testName+"/create_table", err)
+		}
+		ctx, ctxCancel := context.WithTimeout(context.Background(), timeout)
+		err = godynamo.WaitForTableStatus(ctx, db, tblName, []string{"ACTIVE"}, waitTime)
+		ctxCancel()
+		if err != nil {
+			t.Fatalf("%s failed: %s", testName+"/WaitForTableStatus", err)
+		}
+	}
 	testData := []struct {
 		name         string
 		sql          string
 		tableInfo    *tableInfo
 		affectedRows int64
 	}{
-		{name: "change_wcu_rcu_provisioned", sql: fmt.Sprintf(`ALTER TABLE %s WITH wcu=3 WITH rcu=5`, tblTestTemp), affectedRows: 1,
+		{name: "change_wcu_rcu_provisioned", sql: fmt.Sprintf(`ALTER TABLE %s WITH wcu=3 WITH rcu=5`, tblName), affectedRows: 1,
 			tableInfo: &tableInfo{tableName: tblTestTemp, billingMode: "PROVISIONED", wcu: 3, rcu: 5, pkAttr: "id", pkType: "S"}},
-		{name: "change_wcu_rcu_on_demand", sql: fmt.Sprintf(`ALTER TABLE %s WITH wcu=0 WITH rcu=0`, tblTestTemp), affectedRows: 1,
+		{name: "change_wcu_rcu_on_demand", sql: fmt.Sprintf(`ALTER TABLE %s WITH wcu=0 WITH rcu=0`, tblName), affectedRows: 1,
 			tableInfo: &tableInfo{tableName: tblTestTemp, billingMode: "PAY_PER_REQUEST", wcu: 0, rcu: 0, pkAttr: "id", pkType: "S"}},
 		// DynamoDB Docker version does not support changing table class
 	}
@@ -169,6 +202,14 @@ func Test_Exec_AlterTable(t *testing.T) {
 			if testCase.tableInfo == nil {
 				return
 			}
+
+			ctx, ctxCancel := context.WithTimeout(context.Background(), timeout)
+			err = godynamo.WaitForTableStatus(ctx, db, tblName, []string{"ACTIVE"}, waitTime)
+			ctxCancel()
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/WaitForTableStatus", err)
+			}
+
 			dbresult, err := db.Query(fmt.Sprintf(`DESCRIBE TABLE %s`, testCase.tableInfo.tableName))
 			if err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+testCase.name+"/describe_table", err)
@@ -196,17 +237,29 @@ func Test_Query_DropTable(t *testing.T) {
 func Test_Exec_DropTable(t *testing.T) {
 	testName := "Test_Exec_DropTable"
 	db := _openDb(t, testName)
-	_initTest(db)
-	defer func() { _ = db.Close() }()
+	tblName := tblTestTemp + fmt.Sprintf("%x", time.Now().UnixNano())
+	defer func() { _, _ = db.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblName)); _ = db.Close() }()
 
-	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=id:string`, tblTestTemp))
+	timeout, waitTime := 10*time.Second, 500*time.Millisecond
+	{
+		_, err := db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=id:string`, tblName))
+		if err != nil {
+			t.Fatalf("%s failed: %s", testName+"/create_table", err)
+		}
+		ctx, ctxCancel := context.WithTimeout(context.Background(), timeout)
+		err = godynamo.WaitForTableStatus(ctx, db, tblName, []string{"ACTIVE"}, waitTime)
+		ctxCancel()
+		if err != nil {
+			t.Fatalf("%s failed: %s", testName+"/WaitForTableStatus", err)
+		}
+	}
 	testData := []struct {
 		name         string
 		sql          string
 		affectedRows int64
 	}{
-		{name: "basic", sql: fmt.Sprintf(`DROP TABLE %s`, tblTestTemp), affectedRows: 1},
-		{name: "if_exists", sql: fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp), affectedRows: 0},
+		{name: "basic", sql: fmt.Sprintf(`DROP TABLE %s`, tblName), affectedRows: 1},
+		{name: "if_exists", sql: fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblName), affectedRows: 0},
 	}
 
 	for _, testCase := range testData {
@@ -221,6 +274,12 @@ func Test_Exec_DropTable(t *testing.T) {
 			}
 			if affectedRows != testCase.affectedRows {
 				t.Fatalf("%s failed: expected %#v affected-rows but received %#v", testName+"/"+testCase.name, testCase.affectedRows, affectedRows)
+			}
+			ctx, ctxCancel := context.WithTimeout(context.Background(), timeout)
+			err = godynamo.WaitForTableStatus(ctx, db, tblName, []string{""}, waitTime)
+			ctxCancel()
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/WaitForTableStatus", err)
 			}
 		})
 	}
@@ -240,8 +299,8 @@ func Test_Exec_DescribeTable(t *testing.T) {
 func TestRowsDescribeTable_ColumnTypeDatabaseTypeName(t *testing.T) {
 	testName := "TestRowsDescribeTable_ColumnTypeDatabaseTypeName"
 	db := _openDb(t, testName)
-	defer func() { _ = db.Close() }()
-	_initTest(db)
+	defer func() { _cleanupTables(db); _ = db.Close() }()
+	_cleanupTables(db)
 
 	expected := map[string]struct {
 		scanType reflect.Type
@@ -276,6 +335,16 @@ func TestRowsDescribeTable_ColumnTypeDatabaseTypeName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/createTable", err)
 	}
+	{
+		timeout, waitTime := 10*time.Second, 500*time.Millisecond
+		ctx, ctxCancel := context.WithTimeout(context.Background(), timeout)
+		err = godynamo.WaitForTableStatus(ctx, db, tblTestTemp, []string{"ACTIVE"}, waitTime)
+		ctxCancel()
+		if err != nil {
+			t.Fatalf("%s failed: %s", testName+"/WaitForTableStatus", err)
+		}
+	}
+
 	dbresult, err := db.Query(fmt.Sprintf(`DESCRIBE TABLE %s`, tblTestTemp))
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName+"/describeTable", err)

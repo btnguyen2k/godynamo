@@ -1,6 +1,7 @@
 package godynamo_test
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -37,6 +39,7 @@ type gsiInfo struct {
 
 type tableInfo struct {
 	tableName      string
+	class          string
 	billingMode    string
 	rcu, wcu       int64
 	pkAttr, pkType string
@@ -50,15 +53,38 @@ const (
 	tblTestTemp      = "test_temp"
 )
 
-func _initTest(db *sql.DB) {
+func _waitForTableStatus(db *sql.DB, tableName string, expectedStatus []string, timeout, waitTime time.Duration) {
+	ctx, ctxCancel := context.WithTimeout(context.Background(), timeout)
+	defer ctxCancel()
+	err := godynamo.WaitForTableStatus(ctx, db, tableName, expectedStatus, waitTime)
+	if err != nil {
+		fmt.Printf("[DEBUG]_waitForTableStatus\tError: table %s, timeout: %s, expected status: %#v, error: %s\n", tableName, timeout, expectedStatus, err)
+	}
+}
+
+func _dropAndWaitTable(db *sql.DB, tableName string, wg *sync.WaitGroup) {
+	defer func() {
+		if wg != nil {
+			wg.Done()
+		}
+	}()
+
+	fmt.Printf("[DEBUG]_dropAndWaitTable Dropping table %s...\n", tableName)
+	_, _ = db.Exec(`DROP TABLE IF EXISTS ` + tableName)
+	_waitForTableStatus(db, tableName, []string{""}, 10*time.Second, 500*time.Millisecond)
+}
+
+func _cleanupTables(db *sql.DB) {
 	_, _ = db.Exec(`DROP TABLE IF EXISTS ` + tblTestNotExist)
 	_, _ = db.Exec(`DROP TABLE IF EXISTS ` + tblTestNotExists)
-	_, _ = db.Exec(`DROP TABLE IF EXISTS ` + tblTestTemp)
-	_ = godynamo.WaitForTableStatus(nil, db, tblTestTemp, []string{""}, 100*time.Millisecond)
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1 + 10)
+	go _dropAndWaitTable(db, tblTestTemp, wg)
 	for i := 0; i < 10; i++ {
-		_, _ = db.Exec(`DROP TABLE IF EXISTS ` + tblTestTemp + strconv.Itoa(i))
-		_ = godynamo.WaitForTableStatus(nil, db, tblTestTemp+strconv.Itoa(i), []string{""}, 100*time.Millisecond)
+		go _dropAndWaitTable(db, tblTestTemp+strconv.Itoa(i), wg)
 	}
+	wg.Wait()
 }
 
 func _verifyTableInfo(t *testing.T, testName string, row map[string]interface{}, tableInfo *tableInfo) {
@@ -70,6 +96,14 @@ func _verifyTableInfo(t *testing.T, testName string, row map[string]interface{},
 		billingMode, _ := s.GetValueOfType(key, reddo.TypeString)
 		if billingMode != tableInfo.billingMode {
 			t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName, key, tableInfo.billingMode, billingMode)
+		}
+	}
+
+	if tableInfo.class != "" {
+		key = "TableClassSummary.TableClass"
+		tableClass, _ := s.GetValueOfType(key, reddo.TypeString)
+		if tableClass != tableInfo.class {
+			t.Fatalf("%s failed: expected value at key <%s> to be %#v but received %#v", testName, key, tableInfo.class, tableClass)
 		}
 	}
 

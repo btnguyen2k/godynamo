@@ -25,7 +25,7 @@ func Test_Exec_DescribeLSI(t *testing.T) {
 func Test_Query_DescribeLSI(t *testing.T) {
 	testName := "Test_Query_DescribeLSI"
 	db := _openDb(t, testName)
-	_initTest(db)
+	_cleanupTables(db)
 	defer func() { _ = db.Close() }()
 
 	_, err := db.Exec(fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s WITH PK=app:string WITH SK=user:string WITH LSI=idxtime:timestamp:number WITH LSI=idxbrowser:browser:string:* WITH LSI=idxos:os:string:os_name,os_version`, tblTestTemp))
@@ -117,7 +117,7 @@ func Test_Exec_CreateGSI(t *testing.T) {
 	testName := "Test_Exec_CreateGSI"
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
-	_initTest(db)
+	_cleanupTables(db)
 
 	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
 
@@ -182,7 +182,7 @@ func Test_Exec_AlterGSI(t *testing.T) {
 	testName := "Test_Exec_AlterGSI"
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
-	_initTest(db)
+	_cleanupTables(db)
 
 	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
 	_, _ = db.Exec(fmt.Sprintf(`CREATE GSI idxtest ON %s WITH pk=grade:number WITH rcu=3 WITH wcu=4`, tblTestTemp))
@@ -242,7 +242,7 @@ func Test_Exec_DescribeGSI(t *testing.T) {
 func Test_Query_DescribeGSI(t *testing.T) {
 	testName := "Test_Query_DescribeGSI"
 	db := _openDb(t, testName)
-	_initTest(db)
+	_cleanupTables(db)
 	defer func() { _ = db.Close() }()
 
 	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=2`, tblTestTemp))
@@ -337,7 +337,7 @@ func Test_Query_DropGSI(t *testing.T) {
 func Test_Exec_DropGSI(t *testing.T) {
 	testName := "Test_Exec_DropGSI"
 	db := _openDb(t, testName)
-	_initTest(db)
+	_cleanupTables(db)
 	defer func() { _ = db.Close() }()
 
 	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=2`, tblTestTemp))
@@ -385,7 +385,7 @@ func Test_Exec_DropGSI(t *testing.T) {
 func TestRowsDescribeIndex_ColumnTypeDatabaseTypeName_LSI(t *testing.T) {
 	testName := "TestRowsDescribeIndex_ColumnTypeDatabaseTypeName_LSI"
 	db := _openDb(t, testName)
-	_initTest(db)
+	_cleanupTables(db)
 	defer func() { _ = db.Close() }()
 
 	expected := map[string]struct {
@@ -425,7 +425,7 @@ func TestRowsDescribeIndex_ColumnTypeDatabaseTypeName_LSI(t *testing.T) {
 func TestRowsDescribeIndex_ColumnTypeDatabaseTypeName_GSI(t *testing.T) {
 	testName := "TestRowsDescribeIndex_ColumnTypeDatabaseTypeName_GSI"
 	db := _openDb(t, testName)
-	_initTest(db)
+	_cleanupTables(db)
 	defer func() { _ = db.Close() }()
 
 	expected := map[string]struct {

@@ -244,6 +244,8 @@ func (s *StmtCreateTable) ExecContext(ctx context.Context, _ []driver.NamedValue
 
 // StmtListTables implements "LIST TABLES" statement.
 //
+// Note: returned table names are sorted in ascending order.
+//
 // Syntax:
 //
 //	LIST TABLES|TABLE

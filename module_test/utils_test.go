@@ -105,7 +105,7 @@ func TestWaitForGSIStatus(t *testing.T) {
 	testName := "TestWaitForGSIStatus"
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
-	_initTest(db)
+	_cleanupTables(db)
 
 	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
 	testData := []struct {
@@ -150,7 +150,7 @@ func TestWaitForTableStatus(t *testing.T) {
 	testName := "TestWaitForTableStatus"
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
-	_initTest(db)
+	_cleanupTables(db)
 
 	testData := []struct {
 		name       string

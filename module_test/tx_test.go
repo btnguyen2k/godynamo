@@ -17,7 +17,7 @@ func TestTx_Empty(t *testing.T) {
 	testName := "TestTx_Empty"
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
-	_initTest(db)
+	_cleanupTables(db)
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -30,7 +30,7 @@ func TestTx_Empty(t *testing.T) {
 }
 
 func _txPrepareData(db *sql.DB, tableName string) error {
-	_initTest(db)
+	_cleanupTables(db)
 	if _, err := db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=7 WITH wcu=7`, tableName)); err != nil {
 		return err
 	}
@@ -248,7 +248,7 @@ func TestTx_Commit_Insert(t *testing.T) {
 	testName := "TestTx_Commit_Insert"
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
-	_initTest(db)
+	_cleanupTables(db)
 
 	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=3 WITH wcu=3`, tblTestTemp))
 

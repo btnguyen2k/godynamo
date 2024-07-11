@@ -254,6 +254,7 @@ func WaitForTableStatus(ctx context.Context, db *sql.DB, tableName string, statu
 			if len(rows) > 0 {
 				status, _ = rows[0]["TableStatus"].(string)
 			}
+			//fmt.Printf("[DEBUG] Table {%s} has status {%s}, expected {%#v}\n", tableName, status, statusList)
 			if g18.FindInSlice(status, statusList) >= 0 {
 				return nil
 			}

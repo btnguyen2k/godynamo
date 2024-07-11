@@ -10,7 +10,7 @@ func Test_BigTable(t *testing.T) {
 	testName := "Test_BigTable"
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
-	_initTest(db)
+	_cleanupTables(db)
 
 	if _, err := db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=3 WITH wcu=5`, tblTestTemp)); err != nil {
 		t.Fatalf("%s failed: %s", testName+"/create_table", err)
@@ -76,7 +76,7 @@ func Test_BigTable_withWHERE(t *testing.T) {
 	testName := "Test_BigTable_withWHERE"
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
-	_initTest(db)
+	_cleanupTables(db)
 
 	if _, err := db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=3 WITH wcu=5`, tblTestTemp)); err != nil {
 		t.Fatalf("%s failed: %s", testName+"/create_table", err)
@@ -142,7 +142,7 @@ func Test_BigTable_withLIMIT(t *testing.T) {
 	testName := "Test_BigTable_withLIMIT"
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
-	_initTest(db)
+	_cleanupTables(db)
 
 	if _, err := db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=3 WITH wcu=5`, tblTestTemp)); err != nil {
 		t.Fatalf("%s failed: %s", testName+"/create_table", err)
@@ -209,7 +209,7 @@ func Test_BigTable_withLIMIT(t *testing.T) {
 //	testName := "Test_BigTable_withORDERBY"
 //	db := _openDb(t, testName)
 //	defer func() { _ = db.Close() }()
-//	_initTest(db)
+//	_cleanupTables(db)
 //
 //	if _, err := db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=category:string WITH sk=id:string WITH rcu=11 WITH wcu=11`, tblTestTemp)); err != nil {
 //		t.Fatalf("%s failed: %s", testName+"/create_table", err)

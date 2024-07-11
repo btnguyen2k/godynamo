@@ -27,7 +27,7 @@ func Test_Exec_Insert(t *testing.T) {
 	testName := "Test_Exec_Insert"
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
-	_initTest(db)
+	_cleanupTables(db)
 
 	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
 
@@ -78,7 +78,7 @@ func Test_Query_Select(t *testing.T) {
 	testName := "Test_Query_Select"
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
-	_initTest(db)
+	_cleanupTables(db)
 
 	_, err := db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=3 WITH wcu=3`, tblTestTemp))
 	if err != nil {
@@ -116,7 +116,7 @@ func Test_Query_Select_withLimit(t *testing.T) {
 	testName := "Test_Query_Select_withLimit"
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
-	_initTest(db)
+	_cleanupTables(db)
 
 	_, err := db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=5 WITH wcu=5`, tblTestTemp))
 	if err != nil {
@@ -166,7 +166,7 @@ func Test_Query_Select_with_columns_selection(t *testing.T) {
 	testName := "Test_Query_Select_with_columns_selection"
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
-	_initTest(db)
+	_cleanupTables(db)
 
 	_, err := db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH PK=app:string WITH SK=user:string WITH rcu=5 WITH wcu=5`, tblTestTemp))
 	if err != nil {
@@ -214,7 +214,7 @@ func Test_Exec_Delete(t *testing.T) {
 	testName := "Test_Exec_Delete"
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
-	_initTest(db)
+	_cleanupTables(db)
 
 	// setup table
 	_, _ = db.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp))
@@ -274,7 +274,7 @@ func Test_Query_Delete(t *testing.T) {
 	testName := "Test_Query_Delete"
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
-	_initTest(db)
+	_cleanupTables(db)
 
 	// setup table
 	_, _ = db.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp))
@@ -339,7 +339,7 @@ func Test_Exec_Update(t *testing.T) {
 	testName := "Test_Exec_Update"
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
-	_initTest(db)
+	_cleanupTables(db)
 
 	// setup table
 	_, _ = db.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp))
@@ -381,7 +381,7 @@ func Test_Query_Update(t *testing.T) {
 	testName := "Test_Query_Update"
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
-	_initTest(db)
+	_cleanupTables(db)
 
 	// setup table
 	_, _ = db.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS %s`, tblTestTemp))
@@ -428,7 +428,7 @@ func TestResultResultSet_ColumnTypeDatabaseTypeName(t *testing.T) {
 	testName := "TestResultResultSet_ColumnTypeDatabaseTypeName"
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
-	_initTest(db)
+	_cleanupTables(db)
 
 	_, _ = db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=1 WITH wcu=1`, tblTestTemp))
 	testData := map[string]struct {

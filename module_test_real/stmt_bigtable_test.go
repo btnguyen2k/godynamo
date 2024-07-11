@@ -12,7 +12,7 @@ func Test_BigTable(t *testing.T) {
 	testName := "Test_BigTable"
 	db := _openDb(t, testName)
 	defer func() { _ = db.Close() }()
-	//_initTest(db)
+	//_cleanupTables(db)
 	//
 	//if _, err := db.Exec(fmt.Sprintf(`CREATE TABLE %s WITH pk=id:string WITH rcu=7 WITH wcu=20`, tblTestTemp)); err != nil {
 	//	t.Fatalf("%s failed: %s", testName+"/create_table", err)
