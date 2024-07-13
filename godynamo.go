@@ -88,6 +88,8 @@ func ToAttributeValue(value interface{}) (types.AttributeValue, error) {
 			return &types.AttributeValueMemberNULL{Value: true}, err
 		}
 		return ToAttributeValue(dv)
+	case types.AttributeValue:
+		return v, nil
 	case types.AttributeValueMemberB:
 		return &v, nil
 	case types.AttributeValueMemberBOOL:
