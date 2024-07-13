@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/btnguyen2k/godynamo"
+	"github.com/miyamo2/godynamo"
 	"reflect"
 	"sort"
 	"strconv"

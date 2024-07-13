@@ -1,12 +1,14 @@
 # godynamo
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/btnguyen2k/godynamo)](https://goreportcard.com/report/github.com/btnguyen2k/godynamo)
-[![PkgGoDev](https://pkg.go.dev/badge/github.com/btnguyen2k/godynamo)](https://pkg.go.dev/github.com/btnguyen2k/godynamo)
-[![Actions Status](https://github.com/btnguyen2k/godynamo/workflows/godynamo/badge.svg)](https://github.com/btnguyen2k/godynamo/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/miyamo2/godynamo)](https://goreportcard.com/report/github.com/miyamo2/godynamo)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/miyamo2/godynamo)](https://pkg.go.dev/github.com/miyamo2/godynamo)
+[![Actions Status](https://github.com/miyamo2/godynamo/workflows/godynamo/badge.svg)](https://github.com/miyamo2/godynamo/actions)
 [![codecov](https://codecov.io/gh/btnguyen2k/godynamo/branch/main/graph/badge.svg)](https://codecov.io/gh/btnguyen2k/godynamo)
 [![Release](https://img.shields.io/github/release/btnguyen2k/godynamo.svg?style=flat-square)](RELEASE-NOTES.md)
 
 Go driver for [AWS DynamoDB](https://aws.amazon.com/dynamodb/) which can be used with the standard [database/sql](https://golang.org/pkg/database/sql/) package.
+
+Forked from [github.com/btnguyen2k/godynamo](https://github.com/btnguyen2k/godynamo).
 
 ## Usage
 
@@ -17,7 +19,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	_ "github.com/btnguyen2k/godynamo"
+	_ "github.com/miyamo2/godynamo"
 )
 
 func main() {
@@ -73,7 +75,7 @@ package main
 import (
 	"database/sql"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/btnguyen2k/godynamo"
+	"github.com/miyamo2/godynamo"
 )
 
 func main() {
@@ -215,7 +217,7 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 ## Support and Contribution
 
-Feel free to create [pull requests](https://github.com/btnguyen2k/godynamo/pulls) or [issues](https://github.com/btnguyen2k/godynamo/issues) to report bugs or suggest new features.
+Feel free to create [pull requests](https://github.com/miyamo2/godynamo/pulls) or [issues](https://github.com/miyamo2/godynamo/issues) to report bugs or suggest new features.
 Please search the existing issues before filing new issues to avoid duplicates. For new issues, file your bug or feature request as a new issue.
 
 If you find this project useful, please star it.

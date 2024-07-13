@@ -1,7 +1,7 @@
 # godynamo - Supported statements for index
 
 - `DESCRIBE LSI`
-- `CREATE LSI`
+- `CREATE GSI`
 - `DESCRIBE GSI`
 - `ALTER GSI`
 - `DROP GSI`
