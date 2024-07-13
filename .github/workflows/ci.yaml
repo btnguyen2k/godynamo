@@ -12,7 +12,7 @@ on:
   workflow_call:
 
 env:
-  COVER_PKG: 'github.com/btnguyen2k/godynamo'
+  COVER_PKG: 'github.com/miyamo2/godynamo'
   AWS_REGION: 'us-east-1'
   AWS_ACCESS_KEY_ID: 'DUMMYID'
   AWS_SECRET_ACCESS_KEY: 'DUMMYKEY'

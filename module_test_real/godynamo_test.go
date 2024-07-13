@@ -2,7 +2,7 @@ package godynamo_test
 
 import (
 	"database/sql"
-	_ "github.com/btnguyen2k/godynamo"
+	_ "github.com/miyamo2/godynamo"
 	"os"
 	"strings"
 	"testing"

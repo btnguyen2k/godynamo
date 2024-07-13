@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/btnguyen2k/consu/reddo"
-	"github.com/btnguyen2k/godynamo"
+	"github.com/miyamo2/godynamo"
 	"os"
 	"reflect"
 	"strconv"

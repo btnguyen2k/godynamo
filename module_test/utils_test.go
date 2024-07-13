@@ -3,7 +3,7 @@ package godynamo_test
 import (
 	"context"
 	"fmt"
-	"github.com/btnguyen2k/godynamo"
+	"github.com/miyamo2/godynamo"
 	"testing"
 	"time"
 )
