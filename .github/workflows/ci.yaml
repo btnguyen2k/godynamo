@@ -18,7 +18,6 @@ env:
   AWS_SECRET_ACCESS_KEY: 'DUMMYKEY'
   AWS_DYNAMODB_ENDPOINT: 'http://localhost:8000'
   AWS_DYNAMODB_URL: 'Endpoint=http://localhost:8000'
-  TAG_PREFIX: 'v'
 
 jobs:
   GoFmt:
@@ -51,33 +50,6 @@ jobs:
         with:
           version: latest
           only-new-issues: true
-
-  ReleaseDryRun:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    outputs:
-      RESULT: ${{ steps.release_dry_run.outputs.result }}
-      VERSION: ${{ steps.release_dry_run.outputs.releaseVersion }}
-      RELEASE_NOTES: ${{ steps.release_dry_run.outputs.releaseNotes }}
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-      - name: Install Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'lts/*'
-      - name: Release (dry-run)
-        id: release_dry_run
-        uses: btnguyen2k/action-semrelease@v3
-        with:
-          dry-run: true
-          auto-mode: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          tag-major-release: false
-          tag-minor-release: false
-          branches: ${{ github.ref_name }}
-          tag-prefix: ${{ env.TAG_PREFIX }}
-          tag-only: true
 
   TestParsing:
     runs-on: ubuntu-latest
